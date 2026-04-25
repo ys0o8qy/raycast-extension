@@ -24,7 +24,6 @@ export function renderEntryMarkdown(entry: LibraryEntry): string {
   const lines = [
     `# ${entry.title}`,
     `- **Type:** ${entry.type}`,
-    `- **Group:** ${entry.groupLabel}`,
     `- **Tags:** ${entry.tags.length ? entry.tags.join(", ") : "—"}`,
   ];
 
@@ -47,7 +46,7 @@ export function renderEntryMarkdown(entry: LibraryEntry): string {
   }
 
   switch (entry.type) {
-    case "bookmark":
+    case "link":
       if (entry.body) {
         lines.push("", entry.body);
       }
@@ -65,7 +64,11 @@ export function renderEntryMarkdown(entry: LibraryEntry): string {
       break;
     case "schema":
       if (entry.body) {
-        lines.push("", "## Schema", codeFence(schemaKind || "json", entry.body));
+        lines.push(
+          "",
+          "## Schema",
+          codeFence(schemaKind || "json", entry.body),
+        );
       }
       break;
   }

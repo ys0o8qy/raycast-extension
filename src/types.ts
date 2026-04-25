@@ -1,6 +1,6 @@
-export type EntryType = "bookmark" | "image" | "text" | "schema";
+export type EntryType = "link" | "image" | "text" | "schema";
 
-export const ENTRY_TYPES: EntryType[] = ["bookmark", "image", "text", "schema"];
+export const ENTRY_TYPES: EntryType[] = ["link", "image", "text", "schema"];
 
 export interface OrgNode {
   level: number;
@@ -9,6 +9,8 @@ export interface OrgNode {
   properties: Record<string, string>;
   body: string;
   children: OrgNode[];
+  sourceStartLine: number;
+  sourceEndLine: number;
 }
 
 export interface LibraryEntry {
@@ -21,9 +23,12 @@ export interface LibraryEntry {
   groupPath: string[];
   groupLabel: string;
   sourceHeadline: string;
+  sourceStartLine: number;
+  sourceEndLine: number;
 }
 
 export interface NewEntryInput {
+  id?: string;
   title: string;
   type: EntryType;
   tags: string[];
@@ -33,4 +38,8 @@ export interface NewEntryInput {
   description?: string;
   schemaKind?: string;
   body?: string;
+}
+
+export interface EntryInput extends NewEntryInput {
+  id: string;
 }

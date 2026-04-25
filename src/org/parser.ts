@@ -39,7 +39,17 @@ export function parseOrg(content: string): OrgNode[] {
     bodyLines = [];
   };
 
-  for (const line of lines) {
+  const closeNodesAtOrAbove = (level: number, endLine: number) => {
+    while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+      const node = stack.pop();
+      if (node) {
+        node.sourceEndLine = endLine;
+      }
+    }
+  };
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
     const headlineMatch = line.match(headlinePattern);
     if (headlineMatch) {
       finalizeBody();
@@ -47,11 +57,18 @@ export function parseOrg(content: string): OrgNode[] {
 
       const level = headlineMatch[1].length;
       const { title, tags } = parseHeadline(headlineMatch[2]);
-      const node: OrgNode = { level, title, tags, properties: {}, body: "", children: [] };
+      const node: OrgNode = {
+        level,
+        title,
+        tags,
+        properties: {},
+        body: "",
+        children: [],
+        sourceStartLine: lineIndex,
+        sourceEndLine: lines.length,
+      };
 
-      while (stack.length > 0 && stack[stack.length - 1].level >= level) {
-        stack.pop();
-      }
+      closeNodesAtOrAbove(level, lineIndex);
 
       const parent = stack[stack.length - 1];
       if (parent) {
@@ -82,7 +99,8 @@ export function parseOrg(content: string): OrgNode[] {
     if (inProperties) {
       const propertyMatch = line.match(propertyPattern);
       if (propertyMatch) {
-        currentNode.properties[propertyMatch[1].toUpperCase()] = propertyMatch[2].trim();
+        currentNode.properties[propertyMatch[1].toUpperCase()] =
+          propertyMatch[2].trim();
       }
       continue;
     }
@@ -91,14 +109,28 @@ export function parseOrg(content: string): OrgNode[] {
   }
 
   finalizeBody();
+  closeNodesAtOrAbove(1, lines.length);
   return roots;
 }
 
-function isEntryType(value: string | undefined): value is EntryType {
-  return Boolean(value && ENTRY_TYPES.includes(value as EntryType));
+function normalizeEntryType(value: string | undefined): EntryType | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (value.toLowerCase() === "bookmark") {
+    return "link";
+  }
+
+  const normalized = value.toLowerCase();
+  return ENTRY_TYPES.includes(normalized as EntryType)
+    ? (normalized as EntryType)
+    : undefined;
 }
 
-function normalizeProperties(properties: Record<string, string>): Record<string, string> {
+function normalizeProperties(
+  properties: Record<string, string>,
+): Record<string, string> {
   const normalized = { ...properties };
   if (!normalized.SCHEMA_KIND && normalized.FORMAT) {
     normalized.SCHEMA_KIND = normalized.FORMAT;
@@ -106,16 +138,27 @@ function normalizeProperties(properties: Record<string, string>): Record<string,
   return normalized;
 }
 
-function nodeToEntry(node: OrgNode, ancestors: OrgNode[]): LibraryEntry | undefined {
-  const typeValue = node.properties.TYPE?.toLowerCase();
-  if (!isEntryType(typeValue)) {
+function nodeToEntry(
+  node: OrgNode,
+  ancestors: OrgNode[],
+): LibraryEntry | undefined {
+  const typeValue = normalizeEntryType(node.properties.TYPE);
+  if (!typeValue) {
     return undefined;
   }
 
   const properties = normalizeProperties(node.properties);
   const groupPath = ancestors.slice(1).map((ancestor) => ancestor.title);
-  const idSource = [typeValue, ...groupPath, node.title, node.body, JSON.stringify(properties)].join("|");
-  const id = createHash("sha1").update(idSource).digest("hex").slice(0, 12);
+  const idSource = [
+    typeValue,
+    ...groupPath,
+    node.title,
+    node.body,
+    JSON.stringify(properties),
+  ].join("|");
+  const id =
+    properties.ID ||
+    createHash("sha1").update(idSource).digest("hex").slice(0, 12);
 
   return {
     id,
@@ -127,10 +170,15 @@ function nodeToEntry(node: OrgNode, ancestors: OrgNode[]): LibraryEntry | undefi
     groupPath,
     groupLabel: groupPath.length > 0 ? groupPath.join(" / ") : "Ungrouped",
     sourceHeadline: `${"*".repeat(node.level)} ${node.title}`,
+    sourceStartLine: node.sourceStartLine,
+    sourceEndLine: node.sourceEndLine,
   };
 }
 
-export function extractLibraryEntries(nodes: OrgNode[], ancestors: OrgNode[] = []): LibraryEntry[] {
+export function extractLibraryEntries(
+  nodes: OrgNode[],
+  ancestors: OrgNode[] = [],
+): LibraryEntry[] {
   const entries: LibraryEntry[] = [];
 
   for (const node of nodes) {

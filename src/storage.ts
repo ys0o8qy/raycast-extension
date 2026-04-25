@@ -36,3 +36,34 @@ export async function saveEntry(input: NewEntryInput): Promise<void> {
   const updated = appendEntryToOrg(existingContent, input);
   await fs.writeFile(path, updated, "utf8");
 }
+
+export async function updateEntry(
+  id: string,
+  input: NewEntryInput,
+): Promise<void> {
+  const path = getOrgFilePath();
+  const existingContent = await fs.readFile(path, "utf8");
+  const entries = extractLibraryEntries(parseOrg(existingContent));
+  const entry = entries.find((candidate) => candidate.id === id);
+
+  if (!entry) {
+    throw new Error(`Could not find entry ${id}`);
+  }
+
+  const lines = existingContent.replace(/\r\n/g, "\n").split("\n");
+  lines.splice(
+    entry.sourceStartLine,
+    entry.sourceEndLine - entry.sourceStartLine,
+  );
+
+  const withoutEntry = lines
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trimEnd();
+  const updated = appendEntryToOrg(withoutEntry, {
+    ...input,
+    id,
+    groupPath: [],
+  });
+  await fs.writeFile(path, updated, "utf8");
+}

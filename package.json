@@ -2,7 +2,7 @@
   "name": "raycast-org-library",
   "title": "Org Library",
   "version": "0.1.0",
-  "description": "Manage Org-backed bookmarks, images, text snippets, and schema entries from Raycast.",
+  "description": "Manage Org-backed links, images, text snippets, and schema entries from Raycast.",
   "icon": "icon.png",
   "author": "Nous Research",
   "license": "MIT",
@@ -16,13 +16,6 @@
       "mode": "view"
     },
     {
-      "name": "browse-groups",
-      "title": "Browse Groups",
-      "description": "Browse entries grouped by Org heading path",
-      "icon": "browse-groups.png",
-      "mode": "view"
-    },
-    {
       "name": "browse-tags",
       "title": "Browse Tags",
       "description": "Browse entries by Org headline tags",
@@ -32,7 +25,7 @@
     {
       "name": "add-entry",
       "title": "Add Org Library Entry",
-      "description": "Add a bookmark, image, text, or schema entry",
+      "description": "Add a link, image, text, or schema entry",
       "icon": "add-entry.png",
       "mode": "view"
     }
