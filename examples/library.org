@@ -1,0 +1,54 @@
+* Bookmarks
+** Development
+*** Raycast Docs :tools:docs:
+:PROPERTIES:
+:TYPE: bookmark
+:URL: https://developers.raycast.com
+:DESCRIPTION: Raycast extension development docs
+:END:
+Official docs for building Raycast extensions.
+
+* Images
+** Reference
+*** Architecture Diagram :reference:
+:PROPERTIES:
+:TYPE: image
+:PATH: /Users/me/Pictures/architecture.png
+:DESCRIPTION: Example local system diagram
+:END:
+Reference image for system architecture.
+
+** Remote
+*** Logo :brand:
+:PROPERTIES:
+:TYPE: image
+:URL: https://example.com/logo.png
+:DESCRIPTION: Example remote image
+:END:
+Remote image example.
+
+* Text
+** Org Capture Template :org:snippet:
+:PROPERTIES:
+:TYPE: text
+:DESCRIPTION: Example text snippet
+:END:
+#+begin_example
+* TODO Capture something useful
+#+end_example
+
+* Schemas
+** Person Schema :json:schema:
+:PROPERTIES:
+:TYPE: schema
+:SCHEMA_KIND: json-schema
+:DESCRIPTION: Simple person object schema
+:END:
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "email": { "type": "string", "format": "email" }
+  },
+  "required": ["name"]
+}

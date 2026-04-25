@@ -1,0 +1,60 @@
+{
+  "name": "raycast-org-library",
+  "title": "Org Library",
+  "version": "0.1.0",
+  "description": "Manage Org-backed bookmarks, images, text snippets, and schema entries from Raycast.",
+  "icon": "icon.png",
+  "author": "Nous Research",
+  "license": "MIT",
+  "private": true,
+  "commands": [
+    {
+      "name": "search-library",
+      "title": "Search Org Library",
+      "description": "Search entries from an Org file",
+      "mode": "view"
+    },
+    {
+      "name": "browse-groups",
+      "title": "Browse Groups",
+      "description": "Browse entries grouped by Org heading path",
+      "mode": "view"
+    },
+    {
+      "name": "browse-tags",
+      "title": "Browse Tags",
+      "description": "Browse entries by Org headline tags",
+      "mode": "view"
+    },
+    {
+      "name": "add-entry",
+      "title": "Add Org Library Entry",
+      "description": "Add a bookmark, image, text, or schema entry",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "orgFilePath",
+      "type": "textfield",
+      "required": true,
+      "title": "Org File Path",
+      "description": "Absolute path to the Org file storing library entries"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.83.1",
+    "@raycast/utils": "^1.17.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.0.4",
+    "@types/node": "^22.10.2",
+    "eslint": "^8.57.1",
+    "typescript": "^5.7.2"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "dev": "ray develop"
+  }
+}
