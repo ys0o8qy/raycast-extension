@@ -17,13 +17,14 @@ import {
   getAllTags,
   normalizeTag,
   normalizeTags,
+  tagMatchesSearch,
 } from "./resource";
 import { loadEntries, saveEntry, updateEntry } from "./storage";
 import { EntryType, ENTRY_TYPES, LibraryEntry, NewEntryInput } from "./types";
 
 interface ResourceDetailsValues {
   title: string;
-  type: EntryType[];
+  type: EntryType;
   resource: string;
 }
 
@@ -155,24 +156,16 @@ function DetailsStep(props: {
           }
         }}
       />
-      <Form.TagPicker
+      <Form.Dropdown
         id="type"
         title="Resource Type"
-        value={[type]}
-        onChange={(selectedTypes) => {
-          const selectedType = selectedTypes[selectedTypes.length - 1] as
-            | EntryType
-            | undefined;
-          if (!selectedType) {
-            return;
-          }
-          setType(selectedType);
-        }}
+        value={type}
+        onChange={(selectedType) => setType(selectedType as EntryType)}
       >
         {ENTRY_TYPES.map((type) => (
-          <Form.TagPicker.Item key={type} value={type} title={type} />
+          <Form.Dropdown.Item key={type} value={type} title={type} />
         ))}
-      </Form.TagPicker>
+      </Form.Dropdown>
     </Form>
   );
 }
@@ -194,8 +187,7 @@ function TagStep(props: {
   const normalizedQuery = normalizeTag(searchText);
   const visibleExistingTags = existingTags.filter(
     (tag) =>
-      !selectedTags.includes(tag) &&
-      (!normalizedQuery || tag.includes(normalizedQuery)),
+      !selectedTags.includes(tag) && tagMatchesSearch(tag, normalizedQuery),
   );
   const canCreateTag = Boolean(
     normalizedQuery &&
@@ -257,14 +249,50 @@ function TagStep(props: {
       onSearchTextChange={setSearchText}
       filtering={false}
     >
-      {selectedTags.length === 0 &&
-      visibleExistingTags.length === 0 &&
-      !canCreateTag ? (
-        <List.EmptyView
-          title="No Tags Selected"
-          description="Leave tags empty, or type to search and create a tag."
-          actions={<SaveTagsActionPanel entry={entry} onSave={handleSave} />}
-        />
+      {!normalizedQuery ? (
+        <List.Section title="Continue">
+          <List.Item
+            title={entry ? "Update Resource" : "Save Resource"}
+            subtitle={
+              selectedTags.length > 0
+                ? `${selectedTags.length} tags selected`
+                : "No tags selected"
+            }
+            icon={Icon.Check}
+            actions={
+              <ActionPanel>
+                <Action
+                  title={entry ? "Update Resource" : "Save Resource"}
+                  icon={Icon.Check}
+                  onAction={handleSave}
+                />
+              </ActionPanel>
+            }
+          />
+        </List.Section>
+      ) : null}
+
+      {canCreateTag ? (
+        <List.Section title="Create">
+          <List.Item
+            title={`Create #${normalizedQuery}`}
+            icon={Icon.PlusCircle}
+            actions={
+              <ActionPanel>
+                <Action
+                  title="Create Tag"
+                  icon={Icon.Plus}
+                  onAction={createTag}
+                />
+                <Action
+                  title={entry ? "Update Resource" : "Save Resource"}
+                  icon={Icon.Check}
+                  onAction={handleSave}
+                />
+              </ActionPanel>
+            }
+          />
+        </List.Section>
       ) : null}
 
       {selectedTags.length > 0 ? (
@@ -282,30 +310,15 @@ function TagStep(props: {
                     icon={Icon.XMarkCircle}
                     onAction={() => toggleTag(tag)}
                   />
-                  <SaveTagsActionPanel entry={entry} onSave={handleSave} />
+                  <Action
+                    title={entry ? "Update Resource" : "Save Resource"}
+                    icon={Icon.Check}
+                    onAction={handleSave}
+                  />
                 </ActionPanel>
               }
             />
           ))}
-        </List.Section>
-      ) : null}
-
-      {canCreateTag ? (
-        <List.Section title="Create">
-          <List.Item
-            title={`Create #${normalizedQuery}`}
-            icon={Icon.PlusCircle}
-            actions={
-              <ActionPanel>
-                <Action
-                  title="Create Tag"
-                  icon={Icon.Plus}
-                  onAction={createTag}
-                />
-                <SaveTagsActionPanel entry={entry} onSave={handleSave} />
-              </ActionPanel>
-            }
-          />
         </List.Section>
       ) : null}
 
@@ -326,7 +339,11 @@ function TagStep(props: {
                     icon={Icon.CheckCircle}
                     onAction={() => toggleTag(tag)}
                   />
-                  <SaveTagsActionPanel entry={entry} onSave={handleSave} />
+                  <Action
+                    title={entry ? "Update Resource" : "Save Resource"}
+                    icon={Icon.Check}
+                    onAction={handleSave}
+                  />
                 </ActionPanel>
               }
             />
@@ -334,21 +351,6 @@ function TagStep(props: {
         </List.Section>
       ) : null}
     </List>
-  );
-}
-
-function SaveTagsActionPanel(props: {
-  entry?: LibraryEntry;
-  onSave: () => void;
-}) {
-  return (
-    <ActionPanel.Section>
-      <Action
-        title={props.entry ? "Update Resource" : "Save Resource"}
-        icon={Icon.Check}
-        onAction={props.onSave}
-      />
-    </ActionPanel.Section>
   );
 }
 

@@ -1,8 +1,22 @@
 import { Detail } from "@raycast/api";
 import { LibraryEntry } from "./types";
 
+const PREVIEW_BODY_LIMIT = 2400;
+
 function codeFence(language: string, value: string): string {
-  return `\n\n\`\`\`${language}\n${value}\n\`\`\``;
+  return `\n\n\`\`\`${language}\n${escapeCodeFence(value)}\n\`\`\``;
+}
+
+function escapeCodeFence(value: string): string {
+  return value.replace(/```/g, "'''");
+}
+
+function previewBody(value: string): string {
+  if (value.length <= PREVIEW_BODY_LIMIT) {
+    return value;
+  }
+
+  return `${value.slice(0, PREVIEW_BODY_LIMIT).trimEnd()}\n\n... Content truncated for preview.`;
 }
 
 function imageMarkdown(entry: LibraryEntry): string[] {
@@ -23,7 +37,6 @@ function imageMarkdown(entry: LibraryEntry): string[] {
 export function renderEntryMarkdown(entry: LibraryEntry): string {
   const lines = [
     `# ${entry.title}`,
-    `- **Type:** ${entry.type}`,
     `- **Tags:** ${entry.tags.length ? entry.tags.join(", ") : "—"}`,
   ];
 
@@ -44,18 +57,18 @@ export function renderEntryMarkdown(entry: LibraryEntry): string {
   switch (entry.type) {
     case "link":
       if (entry.body) {
-        lines.push("", entry.body);
+        lines.push("", previewBody(entry.body));
       }
       break;
     case "image":
       lines.push(...imageMarkdown(entry));
       if (entry.body) {
-        lines.push("", entry.body);
+        lines.push("", previewBody(entry.body));
       }
       break;
     case "text":
       if (entry.body) {
-        lines.push("", "## Text", codeFence("text", entry.body));
+        lines.push("", "## Text", codeFence("text", previewBody(entry.body)));
       }
       break;
     case "schema":
@@ -63,7 +76,7 @@ export function renderEntryMarkdown(entry: LibraryEntry): string {
         lines.push(
           "",
           "## Schema",
-          codeFence(schemaKind || "json", entry.body),
+          codeFence(schemaKind || "json", previewBody(entry.body)),
         );
       }
       break;

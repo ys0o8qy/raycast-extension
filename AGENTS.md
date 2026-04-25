@@ -71,6 +71,7 @@ Search behavior:
 - Chinese first-letter search is always enabled for plain keywords, with no minimum input length.
 - Full pinyin search is intentionally not supported.
 - All tag filters and all keyword filters must match for an entry to be shown. For example, `#docs z` requires both the `docs` tag and a title/body match for `z`.
+- Tag selector search also supports normalized substring matching and Chinese first-letter substring matching.
 
 ## UI Flow
 
@@ -80,16 +81,29 @@ Step 1 collects:
 
 - Resource name.
 - Resource content.
-- Resource type via `Form.TagPicker`.
+- Resource type via a single-select `Form.Dropdown`.
 
 Step 2 collects:
 
 - Tags via a custom `List` selector with one search box.
+- Empty search shows `Save Resource`/`Update Resource` as the first item, so pressing Enter finishes the flow.
 - Existing tags are filtered from the search text and can be toggled selected/unselected.
-- New tags are created from the same search box through a `Create #tag` list item.
+- New tags are created from the same search box through a first-position `Create #tag` list item when there is no exact existing/selected tag match.
 - Saving with no selected tags is valid and writes an empty tag list.
 
 Editing is launched from `src/actions.tsx` via `Action.Push` and refreshes the search view when saved.
+
+`src/search-library.tsx` uses `List` with `isShowingDetail` to show a right-side preview. The list view should show tags but not resource type text. Preview markdown comes from `src/preview.tsx`, which truncates long bodies and escapes embedded triple backticks before rendering code fences.
+
+## Assets
+
+Raycast icons are PNG files in `assets/`. Regenerate them with:
+
+```bash
+npm run generate-icons
+```
+
+The generator lives at `scripts/generate-icons.mjs` and uses `sharp` to render full-canvas 512x512 PNGs directly. Do not use macOS Quick Look thumbnails for icons; it can add unwanted padding.
 
 ## Verification
 
@@ -98,6 +112,7 @@ Run these before claiming a change is complete:
 ```bash
 ./node_modules/.bin/tsc tests/resource.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js
 npm run build
+npm run generate-icons
 ./node_modules/.bin/ray build
 ```
 

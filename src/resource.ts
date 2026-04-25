@@ -94,6 +94,19 @@ export function getAllTags(entries: LibraryEntry[]): string[] {
   return normalizeTags(entries.flatMap((entry) => entry.tags));
 }
 
+export function tagMatchesSearch(tag: string, searchText: string): boolean {
+  const normalizedQuery = normalizeTag(searchText);
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const normalizedTag = normalizeTag(tag);
+  return (
+    normalizedTag.includes(normalizedQuery) ||
+    buildFirstLetterIndex(normalizedTag).includes(normalizedQuery)
+  );
+}
+
 function isImagePath(value: string): boolean {
   const normalized = value.replace(/^file:\/\//i, "");
   return imagePathPattern.test(normalized);
@@ -105,12 +118,16 @@ function buildSearchableText(entry: LibraryEntry): string {
 
 function buildKeywordSearchIndex(values: string[]): string {
   const text = values.join(" ").toLowerCase();
-  const firstLetters = pinyin(text, {
+  const firstLetters = buildFirstLetterIndex(text);
+
+  return `${text} ${firstLetters}`;
+}
+
+function buildFirstLetterIndex(value: string): string {
+  return pinyin(value, {
     pattern: "first",
     toneType: "none",
     type: "array",
     nonZh: "consecutive",
   }).join("");
-
-  return `${text} ${firstLetters}`;
 }

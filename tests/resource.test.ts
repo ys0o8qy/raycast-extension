@@ -5,6 +5,7 @@ import {
   filterEntriesBySearch,
   normalizeTags,
   parseSearchQuery,
+  tagMatchesSearch,
 } from "../src/resource";
 import { LibraryEntry } from "../src/types";
 
@@ -45,6 +46,13 @@ test("normalizeTags strips hash marks and deduplicates values", () => {
     normalizeTags(["#Raycast", ":docs:", "raycast", "two words"]),
     ["docs", "raycast", "two-words"],
   );
+});
+
+test("tagMatchesSearch supports contains and Chinese first-letter matching", () => {
+  assert.equal(tagMatchesSearch("raycast", "ray"), true);
+  assert.equal(tagMatchesSearch("人工智能", "rg"), true);
+  assert.equal(tagMatchesSearch("人工智能", "zn"), true);
+  assert.equal(tagMatchesSearch("人工智能", "llm"), false);
 });
 
 test("parseSearchQuery separates tag filters from keyword filters", () => {

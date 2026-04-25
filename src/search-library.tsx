@@ -15,6 +15,7 @@ export default function SearchLibraryCommand() {
   return (
     <List
       isLoading={isLoading}
+      isShowingDetail
       searchBarPlaceholder="Search entries, e.g. #docs #raycast keyboard"
       searchText={searchText}
       onSearchTextChange={setSearchText}
@@ -25,11 +26,7 @@ export default function SearchLibraryCommand() {
         <List.Item
           key={entry.id}
           title={entry.title}
-          subtitle={entry.type}
-          accessories={[
-            { tag: entry.type },
-            ...(entry.tags.length > 0 ? [{ tag: entry.tags.join(", ") }] : []),
-          ]}
+          accessories={entry.tags.slice(0, 4).map((tag) => ({ tag }))}
           icon={iconForType(entry.type)}
           detail={
             <List.Item.Detail
@@ -74,12 +71,13 @@ function Metadata(props: { entry: LibraryEntry }) {
 
   return (
     <List.Item.Detail.Metadata>
-      <List.Item.Detail.Metadata.Label title="Type" text={entry.type} />
-      <List.Item.Detail.Metadata.TagList title="Tags">
-        {entry.tags.map((tag) => (
-          <List.Item.Detail.Metadata.TagList.Item key={tag} text={tag} />
-        ))}
-      </List.Item.Detail.Metadata.TagList>
+      {entry.tags.length > 0 ? (
+        <List.Item.Detail.Metadata.TagList title="Tags">
+          {entry.tags.map((tag) => (
+            <List.Item.Detail.Metadata.TagList.Item key={tag} text={tag} />
+          ))}
+        </List.Item.Detail.Metadata.TagList>
+      ) : null}
       {metadataEntries.map(([key, value]) => (
         <List.Item.Detail.Metadata.Label key={key} title={key} text={value} />
       ))}
