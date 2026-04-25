@@ -25,7 +25,7 @@ export default function SearchLibraryCommand() {
         <List.Item
           key={entry.id}
           title={entry.title}
-          subtitle={entry.properties.DESCRIPTION || entry.type}
+          subtitle={entry.type}
           accessories={[
             { tag: entry.type },
             ...(entry.tags.length > 0 ? [{ tag: entry.tags.join(", ") }] : []),
@@ -69,7 +69,7 @@ function iconForType(type: EntryType): Icon {
 function Metadata(props: { entry: LibraryEntry }) {
   const { entry } = props;
   const metadataEntries = Object.entries(entry.properties).filter(
-    ([key]) => key !== "FORMAT",
+    ([key]) => key !== "FORMAT" && key !== "DESCRIPTION",
   );
 
   return (

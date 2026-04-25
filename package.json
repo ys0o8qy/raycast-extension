@@ -41,7 +41,8 @@
   ],
   "dependencies": {
     "@raycast/api": "^1.83.1",
-    "@raycast/utils": "^1.17.0"
+    "@raycast/utils": "^1.17.0",
+    "pinyin-pro": "^3.28.1"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^2.0.4",

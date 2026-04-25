@@ -35,7 +35,6 @@ export interface NewEntryInput {
   groupPath: string[];
   url?: string;
   path?: string;
-  description?: string;
   schemaKind?: string;
   body?: string;
 }

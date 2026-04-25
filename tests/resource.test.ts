@@ -54,7 +54,7 @@ test("parseSearchQuery separates tag filters from keyword filters", () => {
   });
 });
 
-test("filterEntriesBySearch requires all tags and all keywords to match", () => {
+test("filterEntriesBySearch requires tags and every keyword to match title or body", () => {
   const entries: LibraryEntry[] = [
     createEntry({
       title: "Raycast Keyboard",
@@ -71,6 +71,12 @@ test("filterEntriesBySearch requires all tags and all keywords to match", () => 
       tags: ["automation"],
       body: "Macro notes",
     }),
+    createEntry({
+      title: "URL only",
+      tags: ["docs"],
+      properties: { URL: "https://example.com/keyboard" },
+      body: "No matching body",
+    }),
   ];
 
   assert.deepEqual(
@@ -79,6 +85,54 @@ test("filterEntriesBySearch requires all tags and all keywords to match", () => 
     ),
     ["Raycast Keyboard"],
   );
+  assert.deepEqual(
+    filterEntriesBySearch(entries, "#docs z").map((entry) => entry.title),
+    [],
+  );
+  assert.deepEqual(
+    filterEntriesBySearch(entries, "keyboard").map((entry) => entry.title),
+    ["Raycast Keyboard", "Keyboard Maestro"],
+  );
+});
+
+test("filterEntriesBySearch supports Chinese first-letter matching without length limits", () => {
+  const entries: LibraryEntry[] = [
+    createEntry({
+      title: "中国资料",
+      tags: ["country"],
+      body: "这里记录 LLM 资源",
+    }),
+    createEntry({
+      title: "其他内容",
+      tags: ["country"],
+      body: "没有目标内容",
+    }),
+  ];
+
+  assert.deepEqual(
+    filterEntriesBySearch(entries, "zg llm").map((entry) => entry.title),
+    ["中国资料"],
+  );
+  assert.deepEqual(
+    filterEntriesBySearch(entries, "#country z").map((entry) => entry.title),
+    ["中国资料"],
+  );
+});
+
+test("filterEntriesBySearch does not match tags or properties for plain keywords", () => {
+  const entries: LibraryEntry[] = [
+    createEntry({
+      title: "Plain title",
+      tags: ["中文标签"],
+      properties: {
+        URL: "https://example.com/zg",
+        DESCRIPTION: "中国说明",
+      },
+      body: "Plain body",
+    }),
+  ];
+
+  assert.deepEqual(filterEntriesBySearch(entries, "zg"), []);
 });
 
 function createEntry(overrides: Partial<LibraryEntry>): LibraryEntry {

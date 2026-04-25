@@ -29,7 +29,6 @@ export function renderEntryMarkdown(entry: LibraryEntry): string {
 
   const url = entry.properties.URL;
   const localPath = entry.properties.PATH;
-  const description = entry.properties.DESCRIPTION;
   const schemaKind = entry.properties.SCHEMA_KIND;
 
   if (url) {
@@ -37,9 +36,6 @@ export function renderEntryMarkdown(entry: LibraryEntry): string {
   }
   if (localPath) {
     lines.push(`- **Path:** ${localPath}`);
-  }
-  if (description) {
-    lines.push(`- **Description:** ${description}`);
   }
   if (schemaKind) {
     lines.push(`- **Schema Kind:** ${schemaKind}`);

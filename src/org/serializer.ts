@@ -32,7 +32,6 @@ export function buildEntryBlock(input: EntryInput, level: number): string {
     ["TYPE", input.type],
     ["URL", input.url],
     ["PATH", input.path],
-    ["DESCRIPTION", input.description],
     ["SCHEMA_KIND", input.schemaKind],
   ];
 

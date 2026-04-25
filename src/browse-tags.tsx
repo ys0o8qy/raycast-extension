@@ -26,7 +26,7 @@ export default function BrowseTagsCommand() {
               <List.Item
                 key={entry.id}
                 title={entry.title}
-                subtitle={entry.properties.DESCRIPTION || entry.type}
+                subtitle={entry.type}
                 accessories={[{ tag: entry.type }]}
                 detail={
                   <List.Item.Detail markdown={renderEntryMarkdown(entry)} />

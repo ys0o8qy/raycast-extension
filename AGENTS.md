@@ -25,6 +25,8 @@ Resource types are defined in `src/types.ts`:
 
 Legacy Org entries with `:TYPE: bookmark` are parsed as `link` for backward compatibility. New entries should write `:TYPE: link`.
 
+The resource description field is no longer part of the user-facing model. New entries should not write `:DESCRIPTION:`, and parsed legacy descriptions are ignored.
+
 Each persisted resource should have a stable `:ID:` property. Editing depends on this ID to locate and replace the original Org block.
 
 ## Org Storage Flow
@@ -65,7 +67,10 @@ Search behavior:
 
 - Query tokens starting with `#` are tag filters.
 - Non-tag tokens are keyword filters.
-- All tag filters and all keyword filters must match for an entry to be shown.
+- Plain keyword search only indexes `LibraryEntry.title` and `LibraryEntry.body`.
+- Chinese first-letter search is always enabled for plain keywords, with no minimum input length.
+- Full pinyin search is intentionally not supported.
+- All tag filters and all keyword filters must match for an entry to be shown. For example, `#docs z` requires both the `docs` tag and a title/body match for `z`.
 
 ## UI Flow
 
@@ -76,13 +81,13 @@ Step 1 collects:
 - Resource name.
 - Resource content.
 - Resource type via `Form.TagPicker`.
-- Optional description.
-- Optional schema kind.
 
 Step 2 collects:
 
-- Existing tags via `Form.TagPicker`.
-- New tags via a free-text field split on spaces or commas.
+- Tags via a custom `List` selector with one search box.
+- Existing tags are filtered from the search text and can be toggled selected/unselected.
+- New tags are created from the same search box through a `Create #tag` list item.
+- Saving with no selected tags is valid and writes an empty tag list.
 
 Editing is launched from `src/actions.tsx` via `Action.Push` and refreshes the search view when saved.
 
@@ -100,6 +105,7 @@ npm run build
 
 ## Working Notes
 
+- When changing architecture, resource logic, storage format, command flow, or important UI behavior, update this `AGENTS.md` file in the same change.
 - Do not edit generated `raycast-env.d.ts` manually unless Raycast CLI output is wrong.
 - Avoid destructive Git commands. The workspace may contain user changes.
 - Keep source icons in `assets/` only if they are referenced by `package.json`; Raycast validates extension assets.

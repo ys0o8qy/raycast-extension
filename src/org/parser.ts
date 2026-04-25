@@ -132,6 +132,7 @@ function normalizeProperties(
   properties: Record<string, string>,
 ): Record<string, string> {
   const normalized = { ...properties };
+  delete normalized.DESCRIPTION;
   if (!normalized.SCHEMA_KIND && normalized.FORMAT) {
     normalized.SCHEMA_KIND = normalized.FORMAT;
   }

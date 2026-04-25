@@ -1,3 +1,4 @@
+import { pinyin } from "pinyin-pro";
 import { EntryType, LibraryEntry } from "./types";
 
 const imagePathPattern = /\.(apng|avif|gif|heic|heif|jpeg|jpg|png|svg|webp)$/i;
@@ -93,24 +94,23 @@ export function getAllTags(entries: LibraryEntry[]): string[] {
   return normalizeTags(entries.flatMap((entry) => entry.tags));
 }
 
-export function splitNewTags(value: string): string[] {
-  return normalizeTags(value.split(/[\s,]+/));
-}
-
 function isImagePath(value: string): boolean {
   const normalized = value.replace(/^file:\/\//i, "");
   return imagePathPattern.test(normalized);
 }
 
 function buildSearchableText(entry: LibraryEntry): string {
-  return [
-    entry.title,
-    entry.type,
-    entry.body,
-    entry.groupLabel,
-    ...entry.tags,
-    ...Object.values(entry.properties),
-  ]
-    .join(" ")
-    .toLowerCase();
+  return buildKeywordSearchIndex([entry.title, entry.body]);
+}
+
+function buildKeywordSearchIndex(values: string[]): string {
+  const text = values.join(" ").toLowerCase();
+  const firstLetters = pinyin(text, {
+    pattern: "first",
+    toneType: "none",
+    type: "array",
+    nonZh: "consecutive",
+  }).join("");
+
+  return `${text} ${firstLetters}`;
 }

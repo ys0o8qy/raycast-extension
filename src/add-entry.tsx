@@ -4,6 +4,7 @@ import {
   Clipboard,
   Form,
   Icon,
+  List,
   showHUD,
   showToast,
   Toast,
@@ -14,8 +15,8 @@ import { useEffect, useState } from "react";
 import {
   detectResourceType,
   getAllTags,
+  normalizeTag,
   normalizeTags,
-  splitNewTags,
 } from "./resource";
 import { loadEntries, saveEntry, updateEntry } from "./storage";
 import { EntryType, ENTRY_TYPES, LibraryEntry, NewEntryInput } from "./types";
@@ -24,21 +25,12 @@ interface ResourceDetailsValues {
   title: string;
   type: EntryType[];
   resource: string;
-  description: string;
-  schemaKind: string;
-}
-
-interface TagValues {
-  tags: string[];
-  newTags: string;
 }
 
 interface DraftResource {
   title: string;
   type: EntryType;
   resource: string;
-  description: string;
-  schemaKind: string;
 }
 
 export default function AddEntryCommand() {
@@ -129,8 +121,6 @@ function DetailsStep(props: {
       title: values.title,
       type,
       resource,
-      description: values.description,
-      schemaKind: values.schemaKind,
     });
   }
 
@@ -183,21 +173,6 @@ function DetailsStep(props: {
           <Form.TagPicker.Item key={type} value={type} title={type} />
         ))}
       </Form.TagPicker>
-      <Form.TextField
-        id="description"
-        title="Description"
-        placeholder="Optional summary"
-        defaultValue={entry?.properties.DESCRIPTION || ""}
-      />
-      <Form.TextField
-        id="schemaKind"
-        title="Schema Kind"
-        placeholder="org-protocol, json-schema, etc."
-        defaultValue={
-          entry?.properties.SCHEMA_KIND ||
-          (type === "schema" ? "org-protocol" : "")
-        }
-      />
     </Form>
   );
 }
@@ -211,14 +186,25 @@ function TagStep(props: {
   const { pop } = useNavigation();
   const { data = [], isLoading } = useCachedPromise(loadEntries);
   const existingTags = getAllTags(data);
-  const visibleTags = normalizeTags([...existingTags, ...(entry?.tags || [])]);
+  const [selectedTags, setSelectedTags] = useState<string[]>(() =>
+    normalizeTags(entry?.tags || []),
+  );
+  const [searchText, setSearchText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const normalizedQuery = normalizeTag(searchText);
+  const visibleExistingTags = existingTags.filter(
+    (tag) =>
+      !selectedTags.includes(tag) &&
+      (!normalizedQuery || tag.includes(normalizedQuery)),
+  );
+  const canCreateTag = Boolean(
+    normalizedQuery &&
+    !existingTags.includes(normalizedQuery) &&
+    !selectedTags.includes(normalizedQuery),
+  );
 
-  async function handleSubmit(values: TagValues) {
-    const tags = normalizeTags([
-      ...values.tags,
-      ...splitNewTags(values.newTags),
-    ]);
+  async function handleSave() {
+    const tags = normalizeTags(selectedTags);
     const input = buildEntryInput(draft, tags);
 
     try {
@@ -243,37 +229,126 @@ function TagStep(props: {
     }
   }
 
+  function toggleTag(tag: string) {
+    setSelectedTags((currentTags) =>
+      currentTags.includes(tag)
+        ? currentTags.filter((currentTag) => currentTag !== tag)
+        : normalizeTags([...currentTags, tag]),
+    );
+  }
+
+  function createTag() {
+    if (!canCreateTag) {
+      return;
+    }
+
+    setSelectedTags((currentTags) =>
+      normalizeTags([...currentTags, normalizedQuery]),
+    );
+    setSearchText("");
+  }
+
   return (
-    <Form
+    <List
       isLoading={isLoading || isSaving}
       navigationTitle="Choose Tags"
-      actions={
-        <ActionPanel>
-          <Action.SubmitForm
-            title={entry ? "Update Resource" : "Save Resource"}
-            icon={Icon.Check}
-            onSubmit={handleSubmit}
-          />
-        </ActionPanel>
-      }
+      searchBarPlaceholder="Search or create tags..."
+      searchText={searchText}
+      onSearchTextChange={setSearchText}
+      filtering={false}
     >
-      <Form.Description text="Select existing tags, add new tags, or leave everything empty." />
-      <Form.TagPicker
-        id="tags"
-        title="Tags"
-        placeholder="Filter and select tags"
-        defaultValue={entry?.tags || []}
-      >
-        {visibleTags.map((tag) => (
-          <Form.TagPicker.Item key={tag} value={tag} title={tag} />
-        ))}
-      </Form.TagPicker>
-      <Form.TextField
-        id="newTags"
-        title="New Tags"
-        placeholder="Separate new tags with spaces or commas"
+      {selectedTags.length === 0 &&
+      visibleExistingTags.length === 0 &&
+      !canCreateTag ? (
+        <List.EmptyView
+          title="No Tags Selected"
+          description="Leave tags empty, or type to search and create a tag."
+          actions={<SaveTagsActionPanel entry={entry} onSave={handleSave} />}
+        />
+      ) : null}
+
+      {selectedTags.length > 0 ? (
+        <List.Section title="Selected Tags" subtitle={`${selectedTags.length}`}>
+          {selectedTags.map((tag) => (
+            <List.Item
+              key={tag}
+              title={`#${tag}`}
+              icon={Icon.CheckCircle}
+              accessories={[{ text: "Selected" }]}
+              actions={
+                <ActionPanel>
+                  <Action
+                    title="Remove Tag"
+                    icon={Icon.XMarkCircle}
+                    onAction={() => toggleTag(tag)}
+                  />
+                  <SaveTagsActionPanel entry={entry} onSave={handleSave} />
+                </ActionPanel>
+              }
+            />
+          ))}
+        </List.Section>
+      ) : null}
+
+      {canCreateTag ? (
+        <List.Section title="Create">
+          <List.Item
+            title={`Create #${normalizedQuery}`}
+            icon={Icon.PlusCircle}
+            actions={
+              <ActionPanel>
+                <Action
+                  title="Create Tag"
+                  icon={Icon.Plus}
+                  onAction={createTag}
+                />
+                <SaveTagsActionPanel entry={entry} onSave={handleSave} />
+              </ActionPanel>
+            }
+          />
+        </List.Section>
+      ) : null}
+
+      {visibleExistingTags.length > 0 ? (
+        <List.Section
+          title="Existing Tags"
+          subtitle={`${visibleExistingTags.length}`}
+        >
+          {visibleExistingTags.map((tag) => (
+            <List.Item
+              key={tag}
+              title={`#${tag}`}
+              icon={Icon.Tag}
+              actions={
+                <ActionPanel>
+                  <Action
+                    title="Select Tag"
+                    icon={Icon.CheckCircle}
+                    onAction={() => toggleTag(tag)}
+                  />
+                  <SaveTagsActionPanel entry={entry} onSave={handleSave} />
+                </ActionPanel>
+              }
+            />
+          ))}
+        </List.Section>
+      ) : null}
+    </List>
+  );
+}
+
+function SaveTagsActionPanel(props: {
+  entry?: LibraryEntry;
+  onSave: () => void;
+}) {
+  return (
+    <ActionPanel.Section>
+      <Action
+        title={props.entry ? "Update Resource" : "Save Resource"}
+        icon={Icon.Check}
+        onAction={props.onSave}
       />
-    </Form>
+    </ActionPanel.Section>
   );
 }
 
@@ -284,8 +359,6 @@ function buildEntryInput(draft: DraftResource, tags: string[]): NewEntryInput {
     type: draft.type,
     groupPath: [],
     tags,
-    description: draft.description,
-    schemaKind: draft.schemaKind,
   };
 
   switch (draft.type) {
@@ -296,11 +369,7 @@ function buildEntryInput(draft: DraftResource, tags: string[]): NewEntryInput {
         ? { ...input, url: resource }
         : { ...input, path: resource.replace(/^file:\/\//i, "") };
     case "schema":
-      return {
-        ...input,
-        body: resource,
-        schemaKind: draft.schemaKind || "org-protocol",
-      };
+      return { ...input, body: resource };
     case "text":
       return { ...input, body: resource };
   }
