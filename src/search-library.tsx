@@ -5,7 +5,7 @@ import { EntryActions } from "./actions";
 import { renderEntryMarkdown } from "./preview";
 import { filterEntriesBySearch } from "./resource";
 import { loadEntries } from "./storage";
-import { EntryType, LibraryEntry } from "./types";
+import { LibraryEntry } from "./types";
 
 export default function SearchLibraryCommand() {
   const { data = [], isLoading, revalidate } = useCachedPromise(loadEntries);
@@ -47,7 +47,7 @@ export default function SearchLibraryCommand() {
   );
 }
 
-function iconForType(type: EntryType): Icon {
+function iconForType(type: LibraryEntry["type"]): Icon {
   switch (type) {
     case "link":
       return Icon.Link;
@@ -57,6 +57,8 @@ function iconForType(type: EntryType): Icon {
       return Icon.Document;
     case "schema":
       return Icon.Code;
+    default:
+      return Icon.Document;
   }
 }
 

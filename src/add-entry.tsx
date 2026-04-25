@@ -20,7 +20,13 @@ import {
   tagMatchesSearch,
 } from "./resource";
 import { loadEntries, saveEntry, updateEntry } from "./storage";
-import { EntryType, ENTRY_TYPES, LibraryEntry, NewEntryInput } from "./types";
+import {
+  coerceBuiltinEntryType,
+  EntryType,
+  ENTRY_TYPES,
+  LibraryEntry,
+  NewEntryInput,
+} from "./types";
 
 interface ResourceDetailsValues {
   title: string;
@@ -96,7 +102,15 @@ function DetailsStep(props: {
   const initialResource = entry
     ? entry.properties.URL || entry.properties.PATH || entry.body
     : clipboardDefaults.resource;
-  const initialType = entry?.type || clipboardDefaults.type;
+  const initialType = entry
+    ? coerceBuiltinEntryType(
+        entry.type,
+        detectResourceType({
+          text: initialResource,
+          file: entry.properties.PATH,
+        }),
+      )
+    : clipboardDefaults.type;
   const [resource, setResource] = useState(initialResource);
   const [type, setType] = useState<EntryType>(initialType);
 

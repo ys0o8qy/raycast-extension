@@ -1,5 +1,5 @@
 import { pinyin } from "pinyin-pro";
-import { EntryType, LibraryEntry } from "./types";
+import { BuiltinEntryType, LibraryEntry } from "./types";
 
 const imagePathPattern = /\.(apng|avif|gif|heic|heif|jpeg|jpg|png|svg|webp)$/i;
 const schemePattern = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//;
@@ -29,7 +29,9 @@ export function normalizeTags(tags: string[]): string[] {
   );
 }
 
-export function detectResourceType(resource: ClipboardResource): EntryType {
+export function detectResourceType(
+  resource: ClipboardResource,
+): BuiltinEntryType {
   const value = (resource.file || resource.text || "").trim();
 
   if (isImagePath(value)) {

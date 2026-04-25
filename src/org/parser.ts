@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { ENTRY_TYPES, EntryType, LibraryEntry, OrgNode } from "../types";
+import { BUILTIN_ENTRY_TYPES, BuiltinEntryType, LibraryEntry, OrgNode } from "../types";
 
 const headlinePattern = /^(\*+)\s+(.*)$/;
 const propertyPattern = /^:([A-Za-z0-9_@#%:-]+):\s*(.*)$/;
@@ -113,19 +113,20 @@ export function parseOrg(content: string): OrgNode[] {
   return roots;
 }
 
-function normalizeEntryType(value: string | undefined): EntryType | undefined {
+function normalizeEntryType(value: string | undefined): string | undefined {
   if (!value) {
     return undefined;
   }
 
-  if (value.toLowerCase() === "bookmark") {
+  const normalized = value.toLowerCase();
+
+  if (normalized === "bookmark") {
     return "link";
   }
 
-  const normalized = value.toLowerCase();
-  return ENTRY_TYPES.includes(normalized as EntryType)
-    ? (normalized as EntryType)
-    : undefined;
+  return BUILTIN_ENTRY_TYPES.includes(normalized as BuiltinEntryType)
+    ? (normalized as BuiltinEntryType)
+    : normalized;
 }
 
 function normalizeProperties(

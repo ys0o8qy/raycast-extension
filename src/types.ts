@@ -1,6 +1,20 @@
-export type EntryType = "link" | "image" | "text" | "schema";
+export const BUILTIN_ENTRY_TYPES = ["link", "image", "text", "schema"] as const;
 
-export const ENTRY_TYPES: EntryType[] = ["link", "image", "text", "schema"];
+export type BuiltinEntryType = (typeof BUILTIN_ENTRY_TYPES)[number];
+export type EntryType = BuiltinEntryType;
+export type RuntimeEntryType = string;
+export const ENTRY_TYPES: EntryType[] = [...BUILTIN_ENTRY_TYPES];
+
+export function isBuiltinEntryType(value: string): value is BuiltinEntryType {
+  return BUILTIN_ENTRY_TYPES.includes(value as BuiltinEntryType);
+}
+
+export function coerceBuiltinEntryType(
+  value: string | undefined,
+  fallback: BuiltinEntryType = "text",
+): BuiltinEntryType {
+  return value && isBuiltinEntryType(value) ? value : fallback;
+}
 
 export interface OrgNode {
   level: number;
@@ -16,7 +30,7 @@ export interface OrgNode {
 export interface LibraryEntry {
   id: string;
   title: string;
-  type: EntryType;
+  type: RuntimeEntryType;
   tags: string[];
   properties: Record<string, string>;
   body: string;

@@ -8,7 +8,7 @@ import {
   tagMatchesSearch,
 } from "../src/resource";
 import { splitSchemaCommandArgs } from "../src/schema-command";
-import { LibraryEntry } from "../src/types";
+import { coerceBuiltinEntryType, LibraryEntry } from "../src/types";
 
 test("detectResourceType detects links and non-http schemas from clipboard text", () => {
   assert.equal(
@@ -40,6 +40,12 @@ test("detectResourceType detects common image file paths", () => {
     detectResourceType({ text: "file:///Users/me/Pictures/diagram.webp" }),
     "image",
   );
+});
+
+test("coerceBuiltinEntryType preserves built-ins and falls back for unknown runtime types", () => {
+  assert.equal(coerceBuiltinEntryType("schema", "text"), "schema");
+  assert.equal(coerceBuiltinEntryType("snippet", "text"), "text");
+  assert.equal(coerceBuiltinEntryType(undefined, "link"), "link");
 });
 
 test("normalizeTags strips hash marks and deduplicates values", () => {
