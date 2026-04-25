@@ -12,24 +12,28 @@
       "name": "search-library",
       "title": "Search Org Library",
       "description": "Search entries from an Org file",
+      "icon": "search-library.png",
       "mode": "view"
     },
     {
       "name": "browse-groups",
       "title": "Browse Groups",
       "description": "Browse entries grouped by Org heading path",
+      "icon": "browse-groups.png",
       "mode": "view"
     },
     {
       "name": "browse-tags",
       "title": "Browse Tags",
       "description": "Browse entries by Org headline tags",
+      "icon": "browse-tags.png",
       "mode": "view"
     },
     {
       "name": "add-entry",
       "title": "Add Org Library Entry",
       "description": "Add a bookmark, image, text, or schema entry",
+      "icon": "add-entry.png",
       "mode": "view"
     }
   ],
