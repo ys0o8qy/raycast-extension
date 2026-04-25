@@ -2,15 +2,15 @@
 
 ## Project Overview
 
-This is a Raycast extension for managing an Org-mode backed resource library. Resources are stored in a user-configured Org file and exposed through Raycast commands for searching, browsing tags, adding resources, and editing existing resources.
+This is a Raycast extension for managing a resource library. Resources are currently stored in a user-configured Org-compatible file and exposed through Raycast commands for searching, browsing tags, adding resources, and editing existing resources.
 
 The project favors tags over groups. Existing grouped Org files are still parsed for compatibility, but new and edited resources are written without user-facing group selection.
 
 ## Commands
 
-- `search-library`: Main resource search view. Supports tag-aware queries such as `#docs #raycast keyboard`.
-- `browse-tags`: Groups visible resources by existing Org headline tags.
-- `add-entry`: Two-step resource creation flow with clipboard defaults and tag selection.
+- `search-library`: User-facing title `Search Resources`. Main resource search view. Supports tag-aware queries such as `#docs #raycast keyboard`.
+- `browse-tags`: User-facing title `Browse Tags`. Groups visible resources by tag.
+- `add-entry`: User-facing title `Add Resource`. Two-step resource creation flow with clipboard defaults and tag selection.
 
 The removed `browse-groups` command should not be reintroduced unless group-based organization becomes a product requirement again.
 
@@ -29,7 +29,7 @@ The resource description field is no longer part of the user-facing model. New e
 
 Each persisted resource should have a stable `:ID:` property. Editing depends on this ID to locate and replace the original Org block.
 
-Schema resources can define per-entry command handling with `:SCHEMA_COMMAND:` and optional `:SCHEMA_ARGS:` properties. The schema body is sent to the command through stdin. Entry metadata is passed through environment variables: `ORG_LIBRARY_ENTRY_ID`, `ORG_LIBRARY_ENTRY_TITLE`, `ORG_LIBRARY_ENTRY_TYPE`, and `ORG_LIBRARY_ENTRY_TAGS`.
+Schema resources can define per-entry command handling with `:SCHEMA_COMMAND:` and optional `:SCHEMA_ARGS:` properties. The schema body is sent to the command through stdin. Entry metadata is passed through environment variables: `RESOURCE_LIBRARY_ENTRY_ID`, `RESOURCE_LIBRARY_ENTRY_TITLE`, `RESOURCE_LIBRARY_ENTRY_TYPE`, and `RESOURCE_LIBRARY_ENTRY_TAGS`.
 
 ## Org Storage Flow
 
@@ -105,7 +105,9 @@ Editing is launched from `src/actions.tsx` via `Action.Push` and refreshes the s
 - `text`: paste `body` into the frontmost app.
 - `schema`: run the per-entry schema command when configured; otherwise copy `body` to the clipboard.
 
-The edit action should keep the `cmd+e` shortcut.
+The first action in `EntryActions` is the default Enter behavior for search results. Do not wrap `EntryActions` in another `ActionPanel`, or Enter may stop using the resource primary action.
+
+The edit action should keep the `cmd+e` shortcut. `Reload Resources` should remain a secondary action; it refreshes the cached backing-file read and is useful when the file changed outside Raycast.
 
 ## Assets
 

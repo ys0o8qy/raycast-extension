@@ -73,8 +73,9 @@ function schemaPrimaryAction(entry: LibraryEntry) {
 export function EntryActions(props: {
   entry: LibraryEntry;
   onChanged?: () => void;
+  onReload?: () => void;
 }) {
-  const { entry, onChanged } = props;
+  const { entry, onChanged, onReload } = props;
   const url = entry.properties.URL;
   const localPath = entry.properties.PATH;
 
@@ -113,6 +114,14 @@ export function EntryActions(props: {
       ) : null}
       {entry.type !== "link" && entry.type !== "image" && url ? (
         <Action title="Open URL" icon={Icon.Globe} onAction={() => open(url)} />
+      ) : null}
+      {onReload ? (
+        <Action
+          title="Reload Resources"
+          icon={Icon.ArrowClockwise}
+          shortcut={{ modifiers: ["cmd"], key: "r" }}
+          onAction={onReload}
+        />
       ) : null}
     </ActionPanel>
   );

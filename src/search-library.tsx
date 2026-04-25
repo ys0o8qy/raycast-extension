@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Icon, List } from "@raycast/api";
+import { Icon, List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useState } from "react";
 import { EntryActions } from "./actions";
@@ -16,7 +16,7 @@ export default function SearchLibraryCommand() {
     <List
       isLoading={isLoading}
       isShowingDetail
-      searchBarPlaceholder="Search entries, e.g. #docs #raycast keyboard"
+      searchBarPlaceholder="Search resources, e.g. #docs #raycast keyboard"
       searchText={searchText}
       onSearchTextChange={setSearchText}
       filtering={false}
@@ -35,14 +35,11 @@ export default function SearchLibraryCommand() {
             />
           }
           actions={
-            <ActionPanel>
-              <EntryActions entry={entry} onChanged={revalidate} />
-              <Action
-                title="Reload"
-                icon={Icon.ArrowClockwise}
-                onAction={revalidate}
-              />
-            </ActionPanel>
+            <EntryActions
+              entry={entry}
+              onChanged={revalidate}
+              onReload={revalidate}
+            />
           }
         />
       ))}

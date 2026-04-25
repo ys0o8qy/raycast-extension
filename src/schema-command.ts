@@ -80,10 +80,10 @@ export async function runSchemaCommand(entry: LibraryEntry): Promise<void> {
     const child = spawn(config.command, config.args, {
       env: {
         ...process.env,
-        ORG_LIBRARY_ENTRY_ID: entry.id,
-        ORG_LIBRARY_ENTRY_TITLE: entry.title,
-        ORG_LIBRARY_ENTRY_TYPE: entry.type,
-        ORG_LIBRARY_ENTRY_TAGS: entry.tags.join(","),
+        RESOURCE_LIBRARY_ENTRY_ID: entry.id,
+        RESOURCE_LIBRARY_ENTRY_TITLE: entry.title,
+        RESOURCE_LIBRARY_ENTRY_TYPE: entry.type,
+        RESOURCE_LIBRARY_ENTRY_TAGS: entry.tags.join(","),
       },
       stdio: ["pipe", "ignore", "pipe"],
     });

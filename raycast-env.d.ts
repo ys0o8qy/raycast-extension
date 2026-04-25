@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 type ExtensionPreferences = {
-  /** Org File Path - Absolute path to the Org file storing library entries */
+  /** Library File Path - Absolute path to the file storing resources */
   "orgFilePath": string
 }
 

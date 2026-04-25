@@ -1,8 +1,8 @@
 {
   "name": "raycast-org-library",
-  "title": "Org Library",
+  "title": "Resource Library",
   "version": "0.1.0",
-  "description": "Manage Org-backed links, images, text snippets, and schema entries from Raycast.",
+  "description": "Manage links, images, text snippets, and schema entries from Raycast.",
   "icon": "icon.png",
   "author": "Nous Research",
   "license": "MIT",
@@ -10,22 +10,22 @@
   "commands": [
     {
       "name": "search-library",
-      "title": "Search Org Library",
-      "description": "Search entries from an Org file",
+      "title": "Search Resources",
+      "description": "Search saved resources",
       "icon": "search-library.png",
       "mode": "view"
     },
     {
       "name": "browse-tags",
       "title": "Browse Tags",
-      "description": "Browse entries by Org headline tags",
+      "description": "Browse saved resources by tag",
       "icon": "browse-tags.png",
       "mode": "view"
     },
     {
       "name": "add-entry",
-      "title": "Add Org Library Entry",
-      "description": "Add a link, image, text, or schema entry",
+      "title": "Add Resource",
+      "description": "Add a link, image, text, or schema resource",
       "icon": "add-entry.png",
       "mode": "view"
     }
@@ -35,8 +35,8 @@
       "name": "orgFilePath",
       "type": "textfield",
       "required": true,
-      "title": "Org File Path",
-      "description": "Absolute path to the Org file storing library entries"
+      "title": "Library File Path",
+      "description": "Absolute path to the file storing resources"
     }
   ],
   "dependencies": {

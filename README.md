@@ -1,84 +1,56 @@
-# raycast-org-library
+# Resource Library
 
-A minimal Raycast extension for managing an Org-backed library of entries.
+A Raycast extension for saving and using links, images, text snippets, and schema resources.
 
-## Supported entry types
+## Commands
 
-- `bookmark`
-- `image`
-- `text`
-- `schema`
+- `Search Resources`: search saved resources, preview content, and run the default action.
+- `Browse Tags`: browse resources grouped by tag.
+- `Add Resource`: add a resource from clipboard content, choose its type, and assign tags.
 
-## Features
+## Resource Types
 
-- Reads a constrained Org file format without external Org parser dependencies
-- Uses `TYPE` as the authoritative entry type
-- Derives group paths from ancestor headlines below the type root heading
-- Supports local image files via `PATH` and remote images via `URL`
-- Uses `SCHEMA_KIND` for schema metadata while still reading older `FORMAT` values
-- Searches all entries with type-specific previews and actions
-- Browses unique groups and tags
-- Adds normalized entries back into the Org file under type root headings, creating nested group headings as needed
+- `link`: opens in the system browser.
+- `image`: opens local files in the system app, or remote URLs in the browser.
+- `text`: pastes the saved text into the frontmost app.
+- `schema`: runs a per-resource command when configured, otherwise copies the schema body.
 
-## Org file shape
+## Search
 
-Top-level headings are used as storage buckets when writing:
+Search supports plain keywords and tag filters:
 
-- `* Bookmarks`
-- `* Images`
-- `* Text`
-- `* Schemas`
-
-Each entry is stored as a child headline under one of those roots, optionally nested in group headings, with optional headline tags, a property drawer, and body text.
-
-Example:
-
-```org
-* Bookmarks
-** Development
-*** Raycast Docs :tools:docs:
-:PROPERTIES:
-:TYPE: bookmark
-:URL: https://developers.raycast.com
-:DESCRIPTION: Raycast developer documentation
-:END:
-Helpful docs for building extensions.
-
-* Images
-** Reference
-*** Architecture Diagram :reference:
-:PROPERTIES:
-:TYPE: image
-:PATH: /Users/me/Pictures/architecture.png
-:DESCRIPTION: Local system diagram
-:END:
-Reference image for system architecture.
-
-* Schemas
-** Person Schema :json:schema:
-:PROPERTIES:
-:TYPE: schema
-:SCHEMA_KIND: json-schema
-:DESCRIPTION: Simple person object schema
-:END:
-{
-  "type": "object"
-}
+```text
+#docs #llm keyboard
 ```
 
-## Add Entry form
+Tag filters use substring matching and Chinese first-letter matching. Plain keywords search resource titles and body content.
 
-The Add Entry command supports:
+## Tags
 
-- `Group Path` using slash-separated segments such as `Development/Raycast`
-- `URL` for bookmarks and remote images
-- `Local Path` for local image files
-- `Schema Kind` for schema entries
-- `Body` for notes, text snippets, and schema content
+The add/edit flow uses one tag picker screen:
+
+- Search existing tags.
+- Press Enter on an existing tag to select it.
+- Type a new tag and press Enter on `Create #tag` to create it.
+- Press Enter on `Save Resource` or `Update Resource` with an empty search box to finish.
+
+## Schema Commands
+
+Schema resources can define:
+
+- `SCHEMA_COMMAND`: command path to run.
+- `SCHEMA_ARGS`: optional arguments.
+
+The schema body is sent through stdin. Resource metadata is available through environment variables:
+
+- `RESOURCE_LIBRARY_ENTRY_ID`
+- `RESOURCE_LIBRARY_ENTRY_TITLE`
+- `RESOURCE_LIBRARY_ENTRY_TYPE`
+- `RESOURCE_LIBRARY_ENTRY_TAGS`
 
 ## Preference
 
-Set the `Org File Path` preference in Raycast to the absolute path of your `.org` file.
+Set `Library File Path` in Raycast to the absolute path of the backing resource file.
 
 ## Development
 
@@ -86,12 +58,3 @@ Set the `Org File Path` preference in Raycast to the absolute path of your `.org
 npm install
 npm run build
 ```
-
-## Notes
-
-This MVP intentionally supports only a narrow subset of Org syntax:
-
-- headlines
-- headline tags
-- property drawers
-- plain body text
