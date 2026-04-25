@@ -7,6 +7,7 @@ import {
   parseSearchQuery,
   tagMatchesSearch,
 } from "../src/resource";
+import { splitSchemaCommandArgs } from "../src/schema-command";
 import { LibraryEntry } from "../src/types";
 
 test("detectResourceType detects links and non-http schemas from clipboard text", () => {
@@ -45,6 +46,13 @@ test("normalizeTags strips hash marks and deduplicates values", () => {
   assert.deepEqual(
     normalizeTags(["#Raycast", ":docs:", "raycast", "two words"]),
     ["docs", "raycast", "two-words"],
+  );
+});
+
+test("splitSchemaCommandArgs supports quoted arguments", () => {
+  assert.deepEqual(
+    splitSchemaCommandArgs('--mode fast --name "hello world" plain\\ value'),
+    ["--mode", "fast", "--name", "hello world", "plain value"],
   );
 });
 
@@ -124,6 +132,35 @@ test("filterEntriesBySearch supports Chinese first-letter matching without lengt
   assert.deepEqual(
     filterEntriesBySearch(entries, "#country z").map((entry) => entry.title),
     ["中国资料"],
+  );
+});
+
+test("filterEntriesBySearch supports fuzzy hash tag matching", () => {
+  const entries: LibraryEntry[] = [
+    createEntry({
+      title: "LLM Notes",
+      tags: ["llm"],
+      body: "Model notes",
+    }),
+    createEntry({
+      title: "人工智能 Notes",
+      tags: ["人工智能"],
+      body: "AI notes",
+    }),
+    createEntry({
+      title: "Other Notes",
+      tags: ["tools"],
+      body: "Tool notes",
+    }),
+  ];
+
+  assert.deepEqual(
+    filterEntriesBySearch(entries, "#ll").map((entry) => entry.title),
+    ["LLM Notes"],
+  );
+  assert.deepEqual(
+    filterEntriesBySearch(entries, "#rg").map((entry) => entry.title),
+    ["人工智能 Notes"],
   );
 });
 

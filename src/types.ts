@@ -36,6 +36,8 @@ export interface NewEntryInput {
   url?: string;
   path?: string;
   schemaKind?: string;
+  schemaCommand?: string;
+  schemaArgs?: string;
   body?: string;
 }
 

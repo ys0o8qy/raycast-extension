@@ -26,12 +26,16 @@ interface ResourceDetailsValues {
   title: string;
   type: EntryType;
   resource: string;
+  schemaCommand?: string;
+  schemaArgs?: string;
 }
 
 interface DraftResource {
   title: string;
   type: EntryType;
   resource: string;
+  schemaCommand?: string;
+  schemaArgs?: string;
 }
 
 export default function AddEntryCommand() {
@@ -122,6 +126,8 @@ function DetailsStep(props: {
       title: values.title,
       type,
       resource,
+      schemaCommand: values.schemaCommand,
+      schemaArgs: values.schemaArgs,
     });
   }
 
@@ -166,6 +172,22 @@ function DetailsStep(props: {
           <Form.Dropdown.Item key={type} value={type} title={type} />
         ))}
       </Form.Dropdown>
+      {type === "schema" ? (
+        <>
+          <Form.TextField
+            id="schemaCommand"
+            title="Schema Command"
+            placeholder="/usr/local/bin/handle-schema"
+            defaultValue={entry?.properties.SCHEMA_COMMAND || ""}
+          />
+          <Form.TextField
+            id="schemaArgs"
+            title="Schema Arguments"
+            placeholder="Optional arguments; body is sent through stdin"
+            defaultValue={entry?.properties.SCHEMA_ARGS || ""}
+          />
+        </>
+      ) : null}
     </Form>
   );
 }
@@ -371,7 +393,12 @@ function buildEntryInput(draft: DraftResource, tags: string[]): NewEntryInput {
         ? { ...input, url: resource }
         : { ...input, path: resource.replace(/^file:\/\//i, "") };
     case "schema":
-      return { ...input, body: resource };
+      return {
+        ...input,
+        body: resource,
+        schemaCommand: draft.schemaCommand,
+        schemaArgs: draft.schemaArgs,
+      };
     case "text":
       return { ...input, body: resource };
   }

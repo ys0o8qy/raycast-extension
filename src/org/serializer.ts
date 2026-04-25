@@ -33,6 +33,8 @@ export function buildEntryBlock(input: EntryInput, level: number): string {
     ["URL", input.url],
     ["PATH", input.path],
     ["SCHEMA_KIND", input.schemaKind],
+    ["SCHEMA_COMMAND", input.schemaCommand],
+    ["SCHEMA_ARGS", input.schemaArgs],
   ];
 
   const propertyLines = properties

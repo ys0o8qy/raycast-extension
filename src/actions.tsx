@@ -1,6 +1,16 @@
-import { Action, ActionPanel, Clipboard, Icon, open } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Clipboard,
+  Icon,
+  open,
+  showHUD,
+  showToast,
+  Toast,
+} from "@raycast/api";
 import { ResourceFormFlow } from "./add-entry";
 import { EntryDetail } from "./preview";
+import { getSchemaCommandConfig, runSchemaCommand } from "./schema-command";
 import { LibraryEntry } from "./types";
 
 function primaryOpenAction(entry: LibraryEntry) {
@@ -23,13 +33,41 @@ function primaryOpenAction(entry: LibraryEntry) {
       return url ? <Action.OpenInBrowser title="Open Image" url={url} /> : null;
     case "text":
       return entry.body ? (
-        <Action.CopyToClipboard title="Copy Text" content={entry.body} />
+        <Action.Paste title="Paste Text" content={entry.body} />
       ) : null;
     case "schema":
-      return entry.body ? (
-        <Action.CopyToClipboard title="Copy Schema" content={entry.body} />
-      ) : null;
+      return schemaPrimaryAction(entry);
   }
+}
+
+function schemaPrimaryAction(entry: LibraryEntry) {
+  if (!entry.body) {
+    return null;
+  }
+
+  const config = getSchemaCommandConfig(entry);
+  if (!config) {
+    return <Action.CopyToClipboard title="Copy Schema" content={entry.body} />;
+  }
+
+  return (
+    <Action
+      title="Run Schema Command"
+      icon={Icon.Terminal}
+      onAction={async () => {
+        try {
+          await runSchemaCommand(entry);
+          await showHUD("Schema command completed");
+        } catch (error) {
+          await showToast({
+            style: Toast.Style.Failure,
+            title: "Schema command failed",
+            message: String(error),
+          });
+        }
+      }}
+    />
+  );
 }
 
 export function EntryActions(props: {
@@ -46,6 +84,7 @@ export function EntryActions(props: {
       <Action.Push
         title="Edit Resource"
         icon={Icon.Pencil}
+        shortcut={{ modifiers: ["cmd"], key: "e" }}
         target={<ResourceFormFlow entry={entry} onSaved={onChanged} />}
       />
       <Action.Push

@@ -80,11 +80,10 @@ export function filterEntriesBySearch(
   }
 
   return entries.filter((entry) => {
-    const entryTags = new Set(normalizeTags(entry.tags));
     const searchableText = buildSearchableText(entry);
 
     return (
-      parsed.tags.every((tag) => entryTags.has(tag)) &&
+      entryMatchesTagQueries(entry, parsed.tags) &&
       parsed.keywords.every((keyword) => searchableText.includes(keyword))
     );
   });
@@ -104,6 +103,20 @@ export function tagMatchesSearch(tag: string, searchText: string): boolean {
   return (
     normalizedTag.includes(normalizedQuery) ||
     buildFirstLetterIndex(normalizedTag).includes(normalizedQuery)
+  );
+}
+
+export function entryMatchesTagQueries(
+  entry: LibraryEntry,
+  tagQueries: string[],
+): boolean {
+  if (tagQueries.length === 0) {
+    return true;
+  }
+
+  const tags = normalizeTags(entry.tags);
+  return tagQueries.every((tagQuery) =>
+    tags.some((tag) => tagMatchesSearch(tag, tagQuery)),
   );
 }
 

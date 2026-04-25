@@ -29,6 +29,8 @@ The resource description field is no longer part of the user-facing model. New e
 
 Each persisted resource should have a stable `:ID:` property. Editing depends on this ID to locate and replace the original Org block.
 
+Schema resources can define per-entry command handling with `:SCHEMA_COMMAND:` and optional `:SCHEMA_ARGS:` properties. The schema body is sent to the command through stdin. Entry metadata is passed through environment variables: `ORG_LIBRARY_ENTRY_ID`, `ORG_LIBRARY_ENTRY_TITLE`, `ORG_LIBRARY_ENTRY_TYPE`, and `ORG_LIBRARY_ENTRY_TAGS`.
+
 ## Org Storage Flow
 
 - `src/storage.ts` is the public persistence boundary used by commands and actions.
@@ -66,6 +68,7 @@ Tag behavior:
 Search behavior:
 
 - Query tokens starting with `#` are tag filters.
+- Tag filters use the same fuzzy matching as the tag selector: normalized substring matching plus Chinese first-letter substring matching. For example, `#ll` matches `llm`, and `#rg` matches `人工智能`.
 - Non-tag tokens are keyword filters.
 - Plain keyword search only indexes `LibraryEntry.title` and `LibraryEntry.body`.
 - Chinese first-letter search is always enabled for plain keywords, with no minimum input length.
@@ -94,6 +97,15 @@ Step 2 collects:
 Editing is launched from `src/actions.tsx` via `Action.Push` and refreshes the search view when saved.
 
 `src/search-library.tsx` uses `List` with `isShowingDetail` to show a right-side preview. The list view should show tags but not resource type text. Preview markdown comes from `src/preview.tsx`, which truncates long bodies and escapes embedded triple backticks before rendering code fences.
+
+`src/actions.tsx` owns resource primary actions:
+
+- `link`: open `URL` in the system browser.
+- `image`: open local `PATH` through the system default app, or open remote `URL` in the browser.
+- `text`: paste `body` into the frontmost app.
+- `schema`: run the per-entry schema command when configured; otherwise copy `body` to the clipboard.
+
+The edit action should keep the `cmd+e` shortcut.
 
 ## Assets
 
