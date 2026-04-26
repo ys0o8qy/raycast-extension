@@ -37,6 +37,13 @@
       "required": true,
       "title": "Library File Path",
       "description": "Absolute path to the file storing resources"
+    },
+    {
+      "name": "configFilePath",
+      "type": "textfield",
+      "required": false,
+      "title": "Runtime Config Path",
+      "description": "Absolute path to resource-library.config.json"
     }
   ],
   "dependencies": {

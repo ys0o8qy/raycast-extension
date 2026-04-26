@@ -2,6 +2,8 @@ import { getPreferenceValues } from "@raycast/api";
 import { promises as fs } from "node:fs";
 import { appendEntryToOrg } from "./org/serializer";
 import { parseOrg, extractLibraryEntries } from "./org/parser";
+import { loadResourceLibraryConfig } from "./config";
+import { buildRuntimeRegistry, resolveRuntimeStorageInfo } from "./runtime";
 import { LibraryEntry, NewEntryInput } from "./types";
 
 interface Preferences {
@@ -23,8 +25,14 @@ export async function loadEntries(): Promise<LibraryEntry[]> {
   return extractLibraryEntries(parseOrg(content));
 }
 
+export async function loadRuntimeRegistry() {
+  const config = await loadResourceLibraryConfig();
+  return buildRuntimeRegistry(config);
+}
+
 export async function saveEntry(input: NewEntryInput): Promise<void> {
   const path = getOrgFilePath();
+  const runtimeRegistry = await loadRuntimeRegistry();
   let existingContent = "";
 
   try {
@@ -33,7 +41,11 @@ export async function saveEntry(input: NewEntryInput): Promise<void> {
     // If the file does not exist yet, write a new normalized Org document.
   }
 
-  const updated = appendEntryToOrg(existingContent, input);
+  const updated = appendEntryToOrg(
+    existingContent,
+    input,
+    resolveRuntimeStorageInfo(runtimeRegistry, input.type),
+  );
   await fs.writeFile(path, updated, "utf8");
 }
 
@@ -42,6 +54,7 @@ export async function updateEntry(
   input: NewEntryInput,
 ): Promise<void> {
   const path = getOrgFilePath();
+  const runtimeRegistry = await loadRuntimeRegistry();
   const existingContent = await fs.readFile(path, "utf8");
   const entries = extractLibraryEntries(parseOrg(existingContent));
   const entry = entries.find((candidate) => candidate.id === id);
@@ -60,10 +73,14 @@ export async function updateEntry(
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trimEnd();
-  const updated = appendEntryToOrg(withoutEntry, {
-    ...input,
-    id,
-    groupPath: [],
-  });
+  const updated = appendEntryToOrg(
+    withoutEntry,
+    {
+      ...input,
+      id,
+      groupPath: [],
+    },
+    resolveRuntimeStorageInfo(runtimeRegistry, input.type),
+  );
   await fs.writeFile(path, updated, "utf8");
 }

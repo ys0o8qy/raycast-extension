@@ -3,12 +3,19 @@ import assert from "node:assert/strict";
 import {
   detectResourceType,
   filterEntriesBySearch,
+  isRuntimeTypePersistable,
+  mapResourceInputToEntryFields,
   normalizeTags,
+  orderResolvedActionsForDisplay,
   parseSearchQuery,
+  selectVisibleTypeIds,
   tagMatchesSearch,
 } from "../src/resource";
-import { splitSchemaCommandArgs } from "../src/schema-command";
-import { coerceBuiltinEntryType, LibraryEntry } from "../src/types";
+import {
+  coerceBuiltinEntryType,
+  LibraryEntry,
+  ResolvedAction,
+} from "../src/types";
 
 test("detectResourceType detects links and non-http schemas from clipboard text", () => {
   assert.equal(
@@ -48,17 +55,98 @@ test("coerceBuiltinEntryType preserves built-ins and falls back for unknown runt
   assert.equal(coerceBuiltinEntryType(undefined, "link"), "link");
 });
 
+test("selectVisibleTypeIds includes built-in and config-defined types", () => {
+  assert.deepEqual(
+    selectVisibleTypeIds([
+      "link",
+      "image",
+      "text",
+      "schema",
+      "snippet",
+      "generic",
+    ]),
+    ["image", "link", "schema", "snippet", "text"],
+  );
+});
+
+test("mapResourceInputToEntryFields maps resource content by semantic base", () => {
+  assert.deepEqual(
+    mapResourceInputToEntryFields("builtin:file", "/tmp/demo.txt"),
+    { path: "/tmp/demo.txt" },
+  );
+  assert.deepEqual(
+    mapResourceInputToEntryFields("builtin:asset", "file:///tmp/demo.png"),
+    { path: "/tmp/demo.png" },
+  );
+  assert.deepEqual(
+    mapResourceInputToEntryFields("builtin:asset", "https://example.com/demo.png"),
+    { url: "https://example.com/demo.png" },
+  );
+  assert.deepEqual(
+    mapResourceInputToEntryFields("builtin:link", "https://example.com"),
+    { url: "https://example.com" },
+  );
+  assert.deepEqual(
+    mapResourceInputToEntryFields("builtin:text", "body text"),
+    { body: "body text" },
+  );
+});
+
+test("isRuntimeTypePersistable allows custom runtime types once serializer routing is available", () => {
+  assert.equal(isRuntimeTypePersistable("link"), true);
+  assert.equal(isRuntimeTypePersistable("image"), true);
+  assert.equal(isRuntimeTypePersistable("schema"), true);
+  assert.equal(isRuntimeTypePersistable("snippet"), true);
+  assert.equal(isRuntimeTypePersistable("directory"), true);
+});
+
+test("orderResolvedActionsForDisplay promotes the default action and preserves the rest", () => {
+  const actions: ResolvedAction[] = [
+    {
+      id: "copy-body",
+      title: "Copy Body",
+      mode: "builtin",
+      builtin: "copy-to-clipboard",
+      value: "body",
+    },
+    {
+      id: "open-url",
+      title: "Open URL",
+      mode: "builtin",
+      builtin: "open-in-browser",
+      value: "https://example.com",
+    },
+    {
+      id: "show-detail",
+      title: "Show Details",
+      mode: "builtin",
+      builtin: "show-detail",
+    },
+  ];
+
+  assert.deepEqual(
+    orderResolvedActionsForDisplay(actions, actions[1]).map((action) => action.id),
+    ["open-url", "copy-body", "show-detail"],
+  );
+  assert.deepEqual(
+    orderResolvedActionsForDisplay(actions, actions[1], {
+      leadingAction: {
+        id: "schema-command",
+        title: "Run Schema Command",
+        mode: "command",
+        command: "tool",
+        args: [],
+        env: {},
+      },
+    }).map((action) => action.id),
+    ["schema-command", "open-url", "copy-body", "show-detail"],
+  );
+});
+
 test("normalizeTags strips hash marks and deduplicates values", () => {
   assert.deepEqual(
     normalizeTags(["#Raycast", ":docs:", "raycast", "two words"]),
     ["docs", "raycast", "two-words"],
-  );
-});
-
-test("splitSchemaCommandArgs supports quoted arguments", () => {
-  assert.deepEqual(
-    splitSchemaCommandArgs('--mode fast --name "hello world" plain\\ value'),
-    ["--mode", "fast", "--name", "hello world", "plain value"],
   );
 });
 

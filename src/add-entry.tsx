@@ -15,34 +15,39 @@ import { useEffect, useState } from "react";
 import {
   detectResourceType,
   getAllTags,
+  isRuntimeTypePersistable,
+  mapResourceInputToEntryFields,
   normalizeTag,
   normalizeTags,
+  selectVisibleTypeIds,
   tagMatchesSearch,
 } from "./resource";
-import { loadEntries, saveEntry, updateEntry } from "./storage";
+import { loadEntries, loadRuntimeRegistry, saveEntry, updateEntry } from "./storage";
+import { buildRuntimeRegistry, getRuntimeTypeDefinition } from "./runtime";
 import {
-  coerceBuiltinEntryType,
-  EntryType,
-  ENTRY_TYPES,
+  BuiltinEntryType,
   LibraryEntry,
   NewEntryInput,
+  RuntimeRegistry,
 } from "./types";
 
 interface ResourceDetailsValues {
   title: string;
-  type: EntryType;
+  type: string;
   resource: string;
-  schemaCommand?: string;
-  schemaArgs?: string;
 }
 
 interface DraftResource {
   title: string;
-  type: EntryType;
+  type: string;
   resource: string;
-  schemaCommand?: string;
-  schemaArgs?: string;
 }
+
+const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
+  version: 1,
+  actions: {},
+  types: {},
+});
 
 export default function AddEntryCommand() {
   return <ResourceFormFlow />;
@@ -53,9 +58,18 @@ export function ResourceFormFlow(props: {
   onSaved?: () => void;
 }) {
   const { entry, onSaved } = props;
+  const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
+    useCachedPromise(loadRuntimeRegistry);
+  const visibleTypeIds = selectVisibleTypeIds([
+    ...runtimeRegistry.types.keys(),
+    entry?.type || "",
+  ]);
   const [draft, setDraft] = useState<DraftResource | undefined>();
   const [clipboardDefaults, setClipboardDefaults] = useState<
-    Pick<DraftResource, "type" | "resource">
+    {
+      type: BuiltinEntryType;
+      resource: string;
+    }
   >({
     type: "text",
     resource: "",
@@ -81,13 +95,21 @@ export function ResourceFormFlow(props: {
   }, [entry]);
 
   if (draft) {
-    return <TagStep draft={draft} entry={entry} onSaved={onSaved} />;
+    return (
+      <TagStep
+        draft={draft}
+        entry={entry}
+        onSaved={onSaved}
+        runtimeRegistry={runtimeRegistry}
+      />
+    );
   }
 
   return (
     <DetailsStep
       entry={entry}
       clipboardDefaults={clipboardDefaults}
+      visibleTypeIds={visibleTypeIds}
       onContinue={(nextDraft) => setDraft(nextDraft)}
     />
   );
@@ -95,29 +117,37 @@ export function ResourceFormFlow(props: {
 
 function DetailsStep(props: {
   entry?: LibraryEntry;
-  clipboardDefaults: Pick<DraftResource, "type" | "resource">;
+  clipboardDefaults: {
+    type: BuiltinEntryType;
+    resource: string;
+  };
+  visibleTypeIds: string[];
   onContinue: (draft: DraftResource) => void;
 }) {
-  const { entry, clipboardDefaults, onContinue } = props;
+  const { entry, clipboardDefaults, visibleTypeIds, onContinue } = props;
   const initialResource = entry
     ? entry.properties.URL || entry.properties.PATH || entry.body
     : clipboardDefaults.resource;
-  const initialType = entry
-    ? coerceBuiltinEntryType(
-        entry.type,
-        detectResourceType({
-          text: initialResource,
-          file: entry.properties.PATH,
-        }),
-      )
-    : clipboardDefaults.type;
+  const initialType = resolveInitialType(
+    entry,
+    clipboardDefaults.type,
+    visibleTypeIds,
+  );
   const [resource, setResource] = useState(initialResource);
-  const [type, setType] = useState<EntryType>(initialType);
+  const [type, setType] = useState(initialType);
+  const [typeWasEdited, setTypeWasEdited] = useState(Boolean(entry));
 
   useEffect(() => {
     setResource(initialResource);
     setType(initialType);
-  }, [initialResource, initialType]);
+    setTypeWasEdited(Boolean(entry));
+  }, [entry, initialResource, initialType]);
+
+  useEffect(() => {
+    if (!visibleTypeIds.includes(type)) {
+      setType(initialType);
+    }
+  }, [initialType, type, visibleTypeIds]);
 
   async function handleSubmit(values: ResourceDetailsValues) {
     if (!values.title.trim()) {
@@ -140,8 +170,6 @@ function DetailsStep(props: {
       title: values.title,
       type,
       resource,
-      schemaCommand: values.schemaCommand,
-      schemaArgs: values.schemaArgs,
     });
   }
 
@@ -171,7 +199,7 @@ function DetailsStep(props: {
         value={resource}
         onChange={(value) => {
           setResource(value);
-          if (!entry) {
+          if (!entry && !typeWasEdited) {
             setType(detectResourceType({ text: value }));
           }
         }}
@@ -180,28 +208,15 @@ function DetailsStep(props: {
         id="type"
         title="Resource Type"
         value={type}
-        onChange={(selectedType) => setType(selectedType as EntryType)}
+        onChange={(selectedType) => {
+          setType(selectedType);
+          setTypeWasEdited(true);
+        }}
       >
-        {ENTRY_TYPES.map((type) => (
-          <Form.Dropdown.Item key={type} value={type} title={type} />
+        {visibleTypeIds.map((typeId) => (
+          <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
         ))}
       </Form.Dropdown>
-      {type === "schema" ? (
-        <>
-          <Form.TextField
-            id="schemaCommand"
-            title="Schema Command"
-            placeholder="/usr/local/bin/handle-schema"
-            defaultValue={entry?.properties.SCHEMA_COMMAND || ""}
-          />
-          <Form.TextField
-            id="schemaArgs"
-            title="Schema Arguments"
-            placeholder="Optional arguments; body is sent through stdin"
-            defaultValue={entry?.properties.SCHEMA_ARGS || ""}
-          />
-        </>
-      ) : null}
     </Form>
   );
 }
@@ -210,8 +225,9 @@ function TagStep(props: {
   draft: DraftResource;
   entry?: LibraryEntry;
   onSaved?: () => void;
+  runtimeRegistry: RuntimeRegistry;
 }) {
-  const { draft, entry, onSaved } = props;
+  const { draft, entry, onSaved, runtimeRegistry } = props;
   const { pop } = useNavigation();
   const { data = [], isLoading } = useCachedPromise(loadEntries);
   const existingTags = getAllTags(data);
@@ -233,7 +249,20 @@ function TagStep(props: {
 
   async function handleSave() {
     const tags = normalizeTags(selectedTags);
-    const input = buildEntryInput(draft, tags);
+    if (!isRuntimeTypePersistable(draft.type)) {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "This resource type cannot be saved yet",
+        message: `${draft.type} needs serializer support before it can be persisted.`,
+      });
+      return;
+    }
+
+    const semanticType = getRuntimeTypeDefinition(
+      runtimeRegistry,
+      draft.type,
+    ).extends;
+    const input = buildEntryInput(draft, tags, semanticType, draft.type);
 
     try {
       setIsSaving(true);
@@ -390,30 +419,35 @@ function TagStep(props: {
   );
 }
 
-function buildEntryInput(draft: DraftResource, tags: string[]): NewEntryInput {
+function resolveInitialType(
+  entry: LibraryEntry | undefined,
+  detectedType: BuiltinEntryType,
+  visibleTypeIds: string[],
+): string {
+  if (entry?.type && visibleTypeIds.includes(entry.type)) {
+    return entry.type;
+  }
+
+  if (visibleTypeIds.includes(detectedType)) {
+    return detectedType;
+  }
+
+  return visibleTypeIds[0] ?? detectedType;
+}
+
+function buildEntryInput(
+  draft: DraftResource,
+  tags: string[],
+  semanticType: Parameters<typeof mapResourceInputToEntryFields>[0],
+  runtimeType: string,
+): NewEntryInput {
   const resource = draft.resource.trim();
-  const input: NewEntryInput = {
+
+  return {
     title: draft.title,
-    type: draft.type,
+    type: runtimeType as BuiltinEntryType,
     groupPath: [],
     tags,
+    ...mapResourceInputToEntryFields(semanticType, resource),
   };
-
-  switch (draft.type) {
-    case "link":
-      return { ...input, url: resource };
-    case "image":
-      return /^https?:\/\//i.test(resource)
-        ? { ...input, url: resource }
-        : { ...input, path: resource.replace(/^file:\/\//i, "") };
-    case "schema":
-      return {
-        ...input,
-        body: resource,
-        schemaCommand: draft.schemaCommand,
-        schemaArgs: draft.schemaArgs,
-      };
-    case "text":
-      return { ...input, body: resource };
-  }
 }

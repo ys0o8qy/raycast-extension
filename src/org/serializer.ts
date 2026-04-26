@@ -1,12 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { normalizeTags } from "../resource";
-import { EntryType, EntryInput, NewEntryInput } from "../types";
+import { BuiltinSemanticType, EntryInput, NewEntryInput } from "../types";
 
-const ROOT_HEADINGS: Record<EntryType, string> = {
-  link: "Links",
-  image: "Images",
-  text: "Text",
-  schema: "Schemas",
+export interface SerializerRuntimeInfo {
+  semanticType: BuiltinSemanticType;
+  storageRoot?: string;
+}
+
+const ROOT_HEADINGS_BY_SEMANTIC_TYPE: Record<BuiltinSemanticType, string> = {
+  "builtin:link": "Links",
+  "builtin:asset": "Images",
+  "builtin:file": "Files",
+  "builtin:directory": "Directories",
+  "builtin:text": "Text",
+  "builtin:schema": "Schemas",
+  "builtin:generic": "Other",
 };
 
 function normalizeGroupPath(groupPath: string[]): string[] {
@@ -55,10 +63,12 @@ export function buildEntryBlock(input: EntryInput, level: number): string {
 export function appendEntryToOrg(
   content: string,
   input: NewEntryInput,
+  runtimeInfo?: SerializerRuntimeInfo,
 ): string {
   const normalized = content.replace(/\r\n/g, "\n").trimEnd();
   const entryInput = createEntryInput(input);
-  const rootHeading = `* ${ROOT_HEADINGS[entryInput.type]}`;
+  const serializerRuntimeInfo = runtimeInfo ?? inferRuntimeInfo(entryInput.type);
+  const rootHeading = `* ${resolveStorageRoot(serializerRuntimeInfo)}`;
   const groupPath = normalizeGroupPath(input.groupPath);
   const targetHeadingLines = [
     rootHeading,
@@ -77,7 +87,7 @@ export function appendEntryToOrg(
   if (rootIndex === -1) {
     const appended =
       normalized.length > 0 ? `${normalized}\n\n${rootHeading}` : rootHeading;
-    return appendEntryToOrg(appended, entryInput);
+    return appendEntryToOrg(appended, entryInput, serializerRuntimeInfo);
   }
 
   let insertAfter = rootIndex;
@@ -137,4 +147,28 @@ export function appendEntryToOrg(
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trimEnd()}\n`;
+}
+
+function inferRuntimeInfo(type: string): SerializerRuntimeInfo {
+  switch (type) {
+    case "link":
+      return { semanticType: "builtin:link" };
+    case "image":
+      return { semanticType: "builtin:asset" };
+    case "text":
+      return { semanticType: "builtin:text" };
+    case "schema":
+      return { semanticType: "builtin:schema" };
+    default:
+      return { semanticType: "builtin:generic" };
+  }
+}
+
+function resolveStorageRoot(runtimeInfo: SerializerRuntimeInfo): string {
+  const explicitRoot = runtimeInfo.storageRoot?.trim();
+  if (explicitRoot) {
+    return explicitRoot;
+  }
+
+  return ROOT_HEADINGS_BY_SEMANTIC_TYPE[runtimeInfo.semanticType];
 }

@@ -4,71 +4,27 @@ import {
   Clipboard,
   Icon,
   open,
-  showHUD,
   showToast,
   Toast,
 } from "@raycast/api";
+import { useCachedPromise } from "@raycast/utils";
 import { ResourceFormFlow } from "./add-entry";
+import { resolveSchemaCommandAction, runAction } from "./action-runner";
 import { EntryDetail } from "./preview";
-import { getSchemaCommandConfig, runSchemaCommand } from "./schema-command";
-import { LibraryEntry } from "./types";
+import { orderResolvedActionsForDisplay } from "./resource";
+import { loadRuntimeRegistry } from "./storage";
+import {
+  buildRuntimeRegistry,
+  resolveDefaultActionForEntry,
+  resolveEntryActions,
+} from "./runtime";
+import { LibraryEntry, ResolvedAction } from "./types";
 
-function primaryOpenAction(entry: LibraryEntry) {
-  const url = entry.properties.URL;
-  const localPath = entry.properties.PATH;
-
-  switch (entry.type) {
-    case "link":
-      return url ? <Action.OpenInBrowser title="Open Link" url={url} /> : null;
-    case "image":
-      if (localPath) {
-        return (
-          <Action
-            title="Open Image"
-            icon={Icon.Image}
-            onAction={() => open(localPath)}
-          />
-        );
-      }
-      return url ? <Action.OpenInBrowser title="Open Image" url={url} /> : null;
-    case "text":
-      return entry.body ? (
-        <Action.Paste title="Paste Text" content={entry.body} />
-      ) : null;
-    case "schema":
-      return schemaPrimaryAction(entry);
-  }
-}
-
-function schemaPrimaryAction(entry: LibraryEntry) {
-  if (!entry.body) {
-    return null;
-  }
-
-  const config = getSchemaCommandConfig(entry);
-  if (!config) {
-    return <Action.CopyToClipboard title="Copy Schema" content={entry.body} />;
-  }
-
-  return (
-    <Action
-      title="Run Schema Command"
-      icon={Icon.Terminal}
-      onAction={async () => {
-        try {
-          await runSchemaCommand(entry);
-          await showHUD("Schema command completed");
-        } catch (error) {
-          await showToast({
-            style: Toast.Style.Failure,
-            title: "Schema command failed",
-            message: String(error),
-          });
-        }
-      }}
-    />
-  );
-}
+const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
+  version: 1,
+  actions: {},
+  types: {},
+});
 
 export function EntryActions(props: {
   entry: LibraryEntry;
@@ -76,44 +32,82 @@ export function EntryActions(props: {
   onReload?: () => void;
 }) {
   const { entry, onChanged, onReload } = props;
+  const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
+    useCachedPromise(loadRuntimeRegistry);
+  const defaultAction = resolveDefaultActionForEntry(runtimeRegistry, entry);
+  const schemaCompatAction =
+    entry.type === "schema" ? resolveSchemaCommandAction(entry) : undefined;
+  const orderedRuntimeActions = orderResolvedActionsForDisplay(
+    resolveEntryActions(runtimeRegistry, entry),
+    defaultAction,
+    { leadingAction: schemaCompatAction },
+  );
+  const showDetailsIsPrimary =
+    orderedRuntimeActions[0] !== undefined &&
+    isShowDetailAction(orderedRuntimeActions[0]);
+  const resolvedActions = orderedRuntimeActions.filter(
+    (action) => !isShowDetailAction(action),
+  );
   const url = entry.properties.URL;
   const localPath = entry.properties.PATH;
 
+  async function handleResolvedAction(action: ResolvedAction) {
+    try {
+      await runAction(action, {
+        builtins: {
+          "copy-to-clipboard": (value) => Clipboard.copy(value),
+          "open-in-browser": (value) => open(value),
+          "open-path": (value) => open(value),
+          "paste-to-frontmost-app": (value) => Clipboard.paste(value),
+          "show-detail": () => undefined,
+        },
+      });
+    } catch (error) {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: `Failed to ${action.title.toLowerCase()}`,
+        message: String(error),
+      });
+    }
+  }
+
   return (
     <ActionPanel>
-      {primaryOpenAction(entry)}
+      {showDetailsIsPrimary ? (
+        <Action.Push
+          title="Show Details"
+          icon={Icon.AppWindowSidebarLeft}
+          target={<EntryDetail entry={entry} />}
+        />
+      ) : null}
+      {resolvedActions.map((action) => (
+        <Action
+          key={action.id}
+          title={action.title}
+          icon={getActionIcon(action)}
+          onAction={() => handleResolvedAction(action)}
+        />
+      ))}
+      {!showDetailsIsPrimary ? (
+        <Action.Push
+          title="Show Details"
+          icon={Icon.AppWindowSidebarLeft}
+          target={<EntryDetail entry={entry} />}
+        />
+      ) : null}
       <Action.Push
         title="Edit Resource"
         icon={Icon.Pencil}
         shortcut={{ modifiers: ["cmd"], key: "e" }}
         target={<ResourceFormFlow entry={entry} onSaved={onChanged} />}
       />
-      <Action.Push
-        title="Show Details"
-        icon={Icon.AppWindowSidebarLeft}
-        target={<EntryDetail entry={entry} />}
-      />
-      {entry.type === "image" && localPath ? (
+      {localPath ? (
         <Action.CopyToClipboard title="Copy Local Path" content={localPath} />
       ) : null}
       {url ? <Action.CopyToClipboard title="Copy URL" content={url} /> : null}
       <Action.CopyToClipboard title="Copy Title" content={entry.title} />
-      {entry.type === "text" && entry.body ? (
-        <Action
-          title="Copy Body"
-          icon={Icon.Clipboard}
-          onAction={() => Clipboard.copy(entry.body)}
-        />
-      ) : null}
-      {entry.type === "schema" && entry.body ? (
-        <Action
-          title="Copy Schema Body"
-          icon={Icon.Clipboard}
-          onAction={() => Clipboard.copy(entry.body)}
-        />
-      ) : null}
-      {entry.type !== "link" && entry.type !== "image" && url ? (
-        <Action title="Open URL" icon={Icon.Globe} onAction={() => open(url)} />
+      {entry.body ? (
+        <Action.CopyToClipboard title="Copy Body" content={entry.body} />
       ) : null}
       {onReload ? (
         <Action
@@ -125,4 +119,27 @@ export function EntryActions(props: {
       ) : null}
     </ActionPanel>
   );
+}
+
+function isShowDetailAction(action: ResolvedAction): boolean {
+  return action.mode === "builtin" && action.builtin === "show-detail";
+}
+
+function getActionIcon(action: ResolvedAction): Icon {
+  if (action.mode === "command") {
+    return Icon.Terminal;
+  }
+
+  switch (action.builtin) {
+    case "copy-to-clipboard":
+      return Icon.Clipboard;
+    case "open-in-browser":
+      return Icon.Globe;
+    case "open-path":
+      return Icon.Folder;
+    case "paste-to-frontmost-app":
+      return Icon.TextCursor;
+    case "show-detail":
+      return Icon.AppWindowSidebarLeft;
+  }
 }

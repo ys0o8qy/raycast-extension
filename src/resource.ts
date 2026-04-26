@@ -1,5 +1,11 @@
 import { pinyin } from "pinyin-pro";
-import { BuiltinEntryType, LibraryEntry } from "./types";
+import {
+  BuiltinEntryType,
+  BuiltinSemanticType,
+  LibraryEntry,
+  NewEntryInput,
+  ResolvedAction,
+} from "./types";
 
 const imagePathPattern = /\.(apng|avif|gif|heic|heif|jpeg|jpg|png|svg|webp)$/i;
 const schemePattern = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//;
@@ -47,6 +53,68 @@ export function detectResourceType(
   }
 
   return "text";
+}
+
+export function selectVisibleTypeIds(typeIds: string[]): string[] {
+  return Array.from(
+    new Set(
+      typeIds
+        .map((typeId) => typeId.trim())
+        .filter((typeId) => typeId.length > 0 && typeId !== "generic"),
+    ),
+  ).sort((left, right) => left.localeCompare(right));
+}
+
+export function mapResourceInputToEntryFields(
+  semanticType: BuiltinSemanticType,
+  resource: string,
+): Pick<NewEntryInput, "url" | "path" | "body"> {
+  if (semanticType === "builtin:link") {
+    return { url: resource };
+  }
+
+  if (semanticType === "builtin:asset") {
+    return isRemoteResourceUrl(resource)
+      ? { url: resource }
+      : { path: normalizeLocalResourcePath(resource) };
+  }
+
+  if (
+    semanticType === "builtin:file" ||
+    semanticType === "builtin:directory"
+  ) {
+    return { path: normalizeLocalResourcePath(resource) };
+  }
+
+  return { body: resource };
+}
+
+export function isRuntimeTypePersistable(typeId: string): boolean {
+  return typeId.trim().length > 0;
+}
+
+export function orderResolvedActionsForDisplay(
+  actions: ResolvedAction[],
+  defaultAction?: ResolvedAction,
+  options: { leadingAction?: ResolvedAction } = {},
+): ResolvedAction[] {
+  const ordered: ResolvedAction[] = [];
+  const seenIds = new Set<string>();
+
+  function pushAction(action: ResolvedAction | undefined) {
+    if (!action || seenIds.has(action.id)) {
+      return;
+    }
+
+    seenIds.add(action.id);
+    ordered.push(action);
+  }
+
+  pushAction(options.leadingAction);
+  pushAction(defaultAction);
+  actions.forEach(pushAction);
+
+  return ordered;
 }
 
 export function parseSearchQuery(query: string): ParsedSearchQuery {
@@ -123,8 +191,16 @@ export function entryMatchesTagQueries(
 }
 
 function isImagePath(value: string): boolean {
-  const normalized = value.replace(/^file:\/\//i, "");
+  const normalized = normalizeLocalResourcePath(value);
   return imagePathPattern.test(normalized);
+}
+
+function isRemoteResourceUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
+}
+
+function normalizeLocalResourcePath(value: string): string {
+  return value.trim().replace(/^file:\/\//i, "");
 }
 
 function buildSearchableText(entry: LibraryEntry): string {
