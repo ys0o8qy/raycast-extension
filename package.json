@@ -60,6 +60,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
+    "debug:entry-actions": "node scripts/generate-entry-actions-debug-report.mjs",
     "generate-icons": "node scripts/generate-icons.mjs",
     "lint": "eslint src --ext .ts,.tsx",
     "dev": "ray develop"

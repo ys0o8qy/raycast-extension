@@ -6,6 +6,7 @@ import {
   ResourceLibraryConfig,
   RuntimeRegistry,
   TypeDefinition,
+  isBuiltinEntryType,
 } from "./types";
 import { expandTemplate, resolveActionDefinition } from "./action-runner";
 
@@ -95,24 +96,28 @@ const DEFAULT_STORAGE_ROOTS: Record<BuiltinSemanticType, string> = {
   "builtin:generic": "Other",
 };
 
+interface RuntimeRegistryRecords {
+  actions: Record<string, ActionDefinition>;
+  types: Record<string, TypeDefinition>;
+}
+
 export function buildRuntimeRegistry(
   config: ResourceLibraryConfig,
 ): RuntimeRegistry {
-  const actions = new Map<string, ActionDefinition>(
-    Object.entries({
-      ...BUILTIN_ACTIONS,
-      ...config.actions,
-    }),
-  );
-  const types = new Map<string, TypeDefinition>(
-    Object.entries({
-      ...BUILTIN_TYPES,
-      ...config.types,
-    }),
-  );
+  const actions: Record<string, ActionDefinition> = {
+    ...BUILTIN_ACTIONS,
+    ...config.actions,
+  };
+  const types: Record<string, TypeDefinition> = {
+    ...BUILTIN_TYPES,
+    ...config.types,
+  };
 
-  for (const [typeId, definition] of types) {
-    if (definition.defaultAction && !actions.has(definition.defaultAction)) {
+  for (const [typeId, definition] of Object.entries(types)) {
+    if (
+      definition.defaultAction &&
+      actions[definition.defaultAction] === undefined
+    ) {
       throw new Error(
         `Unknown default action referenced by type ${typeId}: ${definition.defaultAction}`,
       );
@@ -128,7 +133,7 @@ export function buildRuntimeRegistry(
     }
 
     for (const actionId of definition.actions) {
-      if (!actions.has(actionId)) {
+      if (actions[actionId] === undefined) {
         throw new Error(`Unknown action referenced by type ${typeId}: ${actionId}`);
       }
     }
@@ -140,11 +145,16 @@ export function buildRuntimeRegistry(
   };
 }
 
+export function getRuntimeTypeIds(registry: RuntimeRegistry): string[] {
+  return Object.keys(getRuntimeRegistryRecords(registry).types);
+}
+
 export function getRuntimeTypeDefinition(
   registry: RuntimeRegistry,
   entryType: string,
 ): TypeDefinition {
-  return registry.types.get(entryType) ?? getGenericRuntimeType(registry);
+  const { types } = getRuntimeRegistryRecords(registry);
+  return types[entryType] ?? getGenericRuntimeType(types);
 }
 
 export function resolveRuntimeStorageInfo(
@@ -159,6 +169,20 @@ export function resolveRuntimeStorageInfo(
       typeDefinition.storageRoot ??
       DEFAULT_STORAGE_ROOTS[typeDefinition.extends],
   };
+}
+
+export function assertRuntimeTypeAvailableForUpdate(
+  registry: RuntimeRegistry,
+  entryType: string,
+): void {
+  const { types } = getRuntimeRegistryRecords(registry);
+  if (isBuiltinEntryType(entryType) || types[entryType] !== undefined) {
+    return;
+  }
+
+  throw new Error(
+    `Cannot update entry with unknown runtime type "${entryType}". Restore this type in your resource library config before editing the entry.`,
+  );
 }
 
 export function resolveEntryActions(
@@ -209,7 +233,8 @@ function resolveActionRecordById(
   entry: LibraryEntry,
   actionId: string,
 ): { action: ResolvedAction; definition: ActionDefinition } {
-  const definition = registry.actions.get(actionId);
+  const { actions } = getRuntimeRegistryRecords(registry);
+  const definition = actions[actionId];
   if (!definition) {
     throw new Error(`Unknown action referenced at runtime: ${actionId}`);
   }
@@ -220,8 +245,41 @@ function resolveActionRecordById(
   };
 }
 
-function getGenericRuntimeType(registry: RuntimeRegistry): TypeDefinition {
-  const generic = registry.types.get("generic");
+function getRuntimeRegistryRecords(
+  registry: RuntimeRegistry,
+): RuntimeRegistryRecords {
+  return {
+    actions: {
+      ...BUILTIN_ACTIONS,
+      ...recordFromMaybeMap<ActionDefinition>(
+        (registry as { actions?: unknown }).actions,
+      ),
+    },
+    types: {
+      ...BUILTIN_TYPES,
+      ...recordFromMaybeMap<TypeDefinition>(
+        (registry as { types?: unknown }).types,
+      ),
+    },
+  };
+}
+
+function recordFromMaybeMap<T>(value: unknown): Record<string, T> {
+  if (value instanceof Map) {
+    return Object.fromEntries(value) as Record<string, T>;
+  }
+
+  if (value && typeof value === "object") {
+    return value as Record<string, T>;
+  }
+
+  return {};
+}
+
+function getGenericRuntimeType(
+  types: Record<string, TypeDefinition>,
+): TypeDefinition {
+  const generic = types.generic;
   if (!generic) {
     throw new Error("Runtime registry is missing the generic type definition");
   }

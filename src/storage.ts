@@ -3,7 +3,11 @@ import { promises as fs } from "node:fs";
 import { appendEntryToOrg } from "./org/serializer";
 import { parseOrg, extractLibraryEntries } from "./org/parser";
 import { loadResourceLibraryConfig } from "./config";
-import { buildRuntimeRegistry, resolveRuntimeStorageInfo } from "./runtime";
+import {
+  assertRuntimeTypeAvailableForUpdate,
+  buildRuntimeRegistry,
+  resolveRuntimeStorageInfo,
+} from "./runtime";
 import { LibraryEntry, NewEntryInput } from "./types";
 
 interface Preferences {
@@ -62,6 +66,8 @@ export async function updateEntry(
   if (!entry) {
     throw new Error(`Could not find entry ${id}`);
   }
+
+  assertRuntimeTypeAvailableForUpdate(runtimeRegistry, entry.type);
 
   const lines = existingContent.replace(/\r\n/g, "\n").split("\n");
   lines.splice(

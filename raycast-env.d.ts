@@ -9,7 +9,9 @@
 
 type ExtensionPreferences = {
   /** Library File Path - Absolute path to the file storing resources */
-  "orgFilePath": string
+  "orgFilePath": string,
+  /** Runtime Config Path - Absolute path to resource-library.config.json */
+  "configFilePath"?: string
 }
 
 /** Preferences accessible in all the extension's commands */

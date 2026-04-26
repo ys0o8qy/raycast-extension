@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-04-26T05:38:15.920Z",
+  "pass": true,
+  "checks": [
+    {
+      "id": "missing-props-safe",
+      "pass": true,
+      "detail": {
+        "showDetailsIsPrimary": false,
+        "resolvedActions": []
+      }
+    },
+    {
+      "id": "text-default-actions",
+      "pass": true,
+      "detail": {
+        "actionIds": [
+          "paste-body",
+          "copy-body"
+        ],
+        "showDetailsIsPrimary": false
+      }
+    },
+    {
+      "id": "schema-compat-prepended",
+      "pass": true,
+      "detail": {
+        "actionIds": [
+          "schema-command",
+          "copy-body"
+        ],
+        "showDetailsIsPrimary": false
+      }
+    }
+  ]
+}

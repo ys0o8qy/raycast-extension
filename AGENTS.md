@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-This is a Raycast extension for managing a resource library. Resources are currently stored in a user-configured Org-compatible file and exposed through Raycast commands for searching, browsing tags, adding resources, and editing existing resources.
+This is a Raycast extension for managing a resource library. Resources are stored in a user-configured Org-compatible file and exposed through Raycast commands for searching, browsing tags, adding resources, and editing existing resources.
+
+Runtime-visible resource types and reusable actions can also be extended through an optional JSON manifest loaded from the Raycast `configFilePath` preference. The Org file remains the canonical storage for entries; `resource-library.config.json` is a runtime manifest, not a second database.
 
 The project favors tags over groups. Existing grouped Org files are still parsed for compatibility, but new and edited resources are written without user-facing group selection.
 
@@ -16,12 +18,25 @@ The removed `browse-groups` command should not be reintroduced unless group-base
 
 ## Data Model
 
-Resource types are defined in `src/types.ts`:
+Persisted entries use an open string `LibraryEntry.type` in `src/types.ts`.
+
+Built-in runtime types currently shipped from `src/runtime.ts`:
 
 - `link`: HTTP and HTTPS resources.
 - `image`: Local or remote image resources.
 - `text`: Plain text snippets and notes.
 - `schema`: URI schemes and structured schema-like content.
+- `generic`: fallback runtime type used when an entry `TYPE` is unknown to the current registry.
+
+Custom runtime types can be declared in `resource-library.config.json` and mapped to built-in semantic bases:
+
+- `builtin:link`
+- `builtin:asset`
+- `builtin:text`
+- `builtin:file`
+- `builtin:directory`
+- `builtin:schema`
+- `builtin:generic`
 
 Legacy Org entries with `:TYPE: bookmark` are parsed as `link` for backward compatibility. New entries should write `:TYPE: link`.
 
@@ -29,21 +44,37 @@ The resource description field is no longer part of the user-facing model. New e
 
 Each persisted resource should have a stable `:ID:` property. Editing depends on this ID to locate and replace the original Org block.
 
-Schema resources can define per-entry command handling with `:SCHEMA_COMMAND:` and optional `:SCHEMA_ARGS:` properties. The schema body is sent to the command through stdin. Entry metadata is passed through environment variables: `RESOURCE_LIBRARY_ENTRY_ID`, `RESOURCE_LIBRARY_ENTRY_TITLE`, `RESOURCE_LIBRARY_ENTRY_TYPE`, and `RESOURCE_LIBRARY_ENTRY_TAGS`.
+Runtime config is loaded from the Raycast `Runtime Config Path` preference (`configFilePath`). When unset, the extension uses only the built-in runtime registry.
+
+Manifest shape:
+
+- `version: 1`
+- `actions`: reusable built-in or command actions
+- `types`: runtime types with `extends`, optional `storageRoot`, optional `defaultAction`, and ordered `actions`
+
+General command actions are declared in the manifest and may template entry data into `command`, `args`, `env`, and `stdin`.
+
+Schema resources still support legacy per-entry `:SCHEMA_COMMAND:` and optional `:SCHEMA_ARGS:` properties as a compatibility action. That compatibility action sends the schema body to stdin and provides `RESOURCE_LIBRARY_ENTRY_ID`, `RESOURCE_LIBRARY_ENTRY_TITLE`, `RESOURCE_LIBRARY_ENTRY_TYPE`, and `RESOURCE_LIBRARY_ENTRY_TAGS` through the environment. Prefer manifest-defined command actions for new behavior.
 
 ## Org Storage Flow
 
 - `src/storage.ts` is the public persistence boundary used by commands and actions.
+- `src/config.ts` loads and validates `resource-library.config.json` from `configFilePath`.
+- `src/runtime.ts` builds the runtime registry by merging built-in types/actions with manifest entries.
 - `src/org/parser.ts` parses Org content into nodes and extracts `LibraryEntry` values.
 - `src/org/serializer.ts` creates Org blocks and appends updated entries.
 - `examples/library.org` is a sample data file, not a fixture automatically used by the extension.
+- `examples/resource-library.config.json` is a sample runtime manifest, not a file the extension loads automatically.
 
-New and edited entries are written under type root headings:
+New and edited entries are written under root headings resolved from runtime semantics or explicit `storageRoot` overrides. Built-in defaults are:
 
 - `* Links`
 - `* Images`
+- `* Files`
+- `* Directories`
 - `* Text`
 - `* Schemas`
+- `* Other`
 
 Parser compatibility keeps old nested headings readable. Serializer calls should pass an empty `groupPath` unless intentionally preserving old grouping behavior.
 
@@ -84,7 +115,7 @@ Step 1 collects:
 
 - Resource name.
 - Resource content.
-- Resource type via a single-select `Form.Dropdown`.
+- Resource type via a single-select `Form.Dropdown` built from the runtime registry, not a hard-coded closed type list.
 
 Step 2 collects:
 
@@ -98,12 +129,16 @@ Editing is launched from `src/actions.tsx` via `Action.Push` and refreshes the s
 
 `src/search-library.tsx` uses `List` with `isShowingDetail` to show a right-side preview. The list view should show tags but not resource type text. Preview markdown comes from `src/preview.tsx`, which truncates long bodies and escapes embedded triple backticks before rendering code fences.
 
-`src/actions.tsx` owns resource primary actions:
+`src/actions.tsx` renders the primary resource actions from the resolved runtime action list for each entry.
+
+Built-in runtime behavior currently maps to:
 
 - `link`: open `URL` in the system browser.
 - `image`: open local `PATH` through the system default app, or open remote `URL` in the browser.
 - `text`: paste `body` into the frontmost app.
-- `schema`: run the per-entry schema command when configured; otherwise copy `body` to the clipboard.
+- `schema`: copy `body` by default.
+
+For `schema` entries, a legacy `SCHEMA_COMMAND` compatibility action is prepended ahead of the manifest-resolved actions when present.
 
 The first action in `EntryActions` is the default Enter behavior for search results. Do not wrap `EntryActions` in another `ActionPanel`, or Enter may stop using the resource primary action.
 
@@ -124,7 +159,7 @@ The generator lives at `scripts/generate-icons.mjs` and uses `sharp` to render f
 Run these before claiming a change is complete:
 
 ```bash
-./node_modules/.bin/tsc tests/resource.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js
+./node_modules/.bin/tsc tests/resource.test.ts tests/parser-runtime.test.ts tests/config.test.ts tests/runtime.test.ts tests/action-runner.test.ts tests/serializer-runtime.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js /tmp/raycast-org-bookmarks-tests/tests/parser-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/config.test.js /tmp/raycast-org-bookmarks-tests/tests/runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/action-runner.test.js /tmp/raycast-org-bookmarks-tests/tests/serializer-runtime.test.js
 npm run build
 npm run generate-icons
 ./node_modules/.bin/ray build

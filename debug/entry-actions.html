@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EntryActions Debug</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        margin: 0;
+        background: #111827;
+        color: #f3f4f6;
+      }
+
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 32px 20px 48px;
+      }
+
+      h1, h2, p {
+        margin: 0 0 12px;
+      }
+
+      .summary,
+      .check {
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(15, 23, 42, 0.9);
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      .summary {
+        margin-bottom: 20px;
+      }
+
+      .status {
+        display: inline-block;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 999px;
+      }
+
+      .pass {
+        color: #d1fae5;
+        background: rgba(5, 150, 105, 0.25);
+      }
+
+      .fail {
+        color: #fee2e2;
+        background: rgba(220, 38, 38, 0.28);
+      }
+
+      .checks {
+        display: grid;
+        gap: 12px;
+      }
+
+      pre {
+        margin: 12px 0 0;
+        padding: 12px;
+        overflow: auto;
+        border-radius: 6px;
+        background: rgba(2, 6, 23, 0.95);
+        color: #cbd5e1;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>EntryActions Debug</h1>
+      <p>Report generated from the current source tree.</p>
+      <section id="summary" class="summary"></section>
+      <section id="checks" class="checks"></section>
+    </main>
+    <script id="report-data" type="application/json"></script>
+    <script>
+      async function loadReport() {
+        const embedded = document.getElementById("report-data");
+        if (embedded && embedded.textContent && embedded.textContent.trim()) {
+          return JSON.parse(embedded.textContent);
+        }
+
+        const response = await fetch("./entry-actions-report.json", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Could not load entry-actions-report.json");
+        }
+        return response.json();
+      }
+
+      function statusBadge(pass) {
+        return `<span class="status ${pass ? "pass" : "fail"}">${pass ? "PASS" : "FAIL"}</span>`;
+      }
+
+      function renderSummary(report) {
+        return `
+          <p>${statusBadge(report.pass)} Overall validation</p>
+          <p>Generated at: ${report.generatedAt}</p>
+        `;
+      }
+
+      function renderChecks(report) {
+        return report.checks
+          .map(
+            (check) => `
+              <article class="check">
+                <h2>${check.id}</h2>
+                <p>${statusBadge(check.pass)}</p>
+                <pre>${escapeHtml(JSON.stringify(check.detail, null, 2))}</pre>
+              </article>
+            `,
+          )
+          .join("");
+      }
+
+      function escapeHtml(value) {
+        return value
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+      }
+
+      loadReport()
+        .then((report) => {
+          document.getElementById("summary").innerHTML = renderSummary(report);
+          document.getElementById("checks").innerHTML = renderChecks(report);
+        })
+        .catch((error) => {
+          document.getElementById("summary").innerHTML = `
+            <p>${statusBadge(false)} Failed to load report</p>
+            <pre>${escapeHtml(String(error))}</pre>
+          `;
+        });
+    </script>
+  </body>
+</html>

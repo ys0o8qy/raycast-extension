@@ -4,11 +4,20 @@ import { useState } from "react";
 import { EntryActions } from "./actions";
 import { renderEntryMarkdown } from "./preview";
 import { filterEntriesBySearch } from "./resource";
-import { loadEntries } from "./storage";
+import { buildRuntimeRegistry } from "./runtime";
+import { loadEntries, loadRuntimeRegistry } from "./storage";
 import { LibraryEntry } from "./types";
+
+const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
+  version: 1,
+  actions: {},
+  types: {},
+});
 
 export default function SearchLibraryCommand() {
   const { data = [], isLoading, revalidate } = useCachedPromise(loadEntries);
+  const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
+    useCachedPromise(loadRuntimeRegistry);
   const [searchText, setSearchText] = useState("");
   const entries = filterEntriesBySearch(data, searchText);
 
@@ -37,6 +46,7 @@ export default function SearchLibraryCommand() {
           actions={
             <EntryActions
               entry={entry}
+              runtimeRegistry={runtimeRegistry}
               onChanged={revalidate}
               onReload={revalidate}
             />

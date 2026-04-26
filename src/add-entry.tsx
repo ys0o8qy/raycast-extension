@@ -23,7 +23,12 @@ import {
   tagMatchesSearch,
 } from "./resource";
 import { loadEntries, loadRuntimeRegistry, saveEntry, updateEntry } from "./storage";
-import { buildRuntimeRegistry, getRuntimeTypeDefinition } from "./runtime";
+import {
+  assertRuntimeTypeAvailableForUpdate,
+  buildRuntimeRegistry,
+  getRuntimeTypeDefinition,
+  getRuntimeTypeIds,
+} from "./runtime";
 import {
   BuiltinEntryType,
   LibraryEntry,
@@ -61,7 +66,7 @@ export function ResourceFormFlow(props: {
   const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
     useCachedPromise(loadRuntimeRegistry);
   const visibleTypeIds = selectVisibleTypeIds([
-    ...runtimeRegistry.types.keys(),
+    ...getRuntimeTypeIds(runtimeRegistry),
     entry?.type || "",
   ]);
   const [draft, setDraft] = useState<DraftResource | undefined>();
@@ -258,6 +263,22 @@ function TagStep(props: {
       return;
     }
 
+    if (entry) {
+      try {
+        assertRuntimeTypeAvailableForUpdate(runtimeRegistry, entry.type);
+      } catch (error) {
+        await showToast({
+          style: Toast.Style.Failure,
+          title: "This resource type is no longer available",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Restore the missing runtime type in your config before editing this entry.",
+        });
+        return;
+      }
+    }
+
     const semanticType = getRuntimeTypeDefinition(
       runtimeRegistry,
       draft.type,
@@ -445,7 +466,7 @@ function buildEntryInput(
 
   return {
     title: draft.title,
-    type: runtimeType as BuiltinEntryType,
+    type: runtimeType,
     groupPath: [],
     tags,
     ...mapResourceInputToEntryFields(semanticType, resource),

@@ -2,10 +2,19 @@ import { List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { EntryActions } from "./actions";
 import { renderEntryMarkdown } from "./preview";
-import { loadEntries } from "./storage";
+import { buildRuntimeRegistry } from "./runtime";
+import { loadEntries, loadRuntimeRegistry } from "./storage";
+
+const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
+  version: 1,
+  actions: {},
+  types: {},
+});
 
 export default function BrowseTagsCommand() {
   const { data, isLoading } = useCachedPromise(loadEntries);
+  const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
+    useCachedPromise(loadRuntimeRegistry);
   const tags = Array.from(
     new Set((data ?? []).flatMap((entry) => entry.tags)),
   ).sort((a, b) => a.localeCompare(b));
@@ -31,7 +40,12 @@ export default function BrowseTagsCommand() {
                 detail={
                   <List.Item.Detail markdown={renderEntryMarkdown(entry)} />
                 }
-                actions={<EntryActions entry={entry} />}
+                actions={
+                  <EntryActions
+                    entry={entry}
+                    runtimeRegistry={runtimeRegistry}
+                  />
+                }
               />
             ))}
           </List.Section>

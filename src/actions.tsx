@@ -7,18 +7,12 @@ import {
   showToast,
   Toast,
 } from "@raycast/api";
-import { useCachedPromise } from "@raycast/utils";
 import { ResourceFormFlow } from "./add-entry";
-import { resolveSchemaCommandAction, runAction } from "./action-runner";
+import { runAction } from "./action-runner";
+import { resolveEntryActionsState } from "./entry-actions-state";
 import { EntryDetail } from "./preview";
-import { orderResolvedActionsForDisplay } from "./resource";
-import { loadRuntimeRegistry } from "./storage";
-import {
-  buildRuntimeRegistry,
-  resolveDefaultActionForEntry,
-  resolveEntryActions,
-} from "./runtime";
-import { LibraryEntry, ResolvedAction } from "./types";
+import { buildRuntimeRegistry } from "./runtime";
+import { LibraryEntry, ResolvedAction, RuntimeRegistry } from "./types";
 
 const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
   version: 1,
@@ -27,29 +21,21 @@ const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
 });
 
 export function EntryActions(props: {
-  entry: LibraryEntry;
+  entry?: LibraryEntry;
+  runtimeRegistry?: RuntimeRegistry;
   onChanged?: () => void;
   onReload?: () => void;
 }) {
-  const { entry, onChanged, onReload } = props;
-  const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
-    useCachedPromise(loadRuntimeRegistry);
-  const defaultAction = resolveDefaultActionForEntry(runtimeRegistry, entry);
-  const schemaCompatAction =
-    entry.type === "schema" ? resolveSchemaCommandAction(entry) : undefined;
-  const orderedRuntimeActions = orderResolvedActionsForDisplay(
-    resolveEntryActions(runtimeRegistry, entry),
-    defaultAction,
-    { leadingAction: schemaCompatAction },
+  const { entry, runtimeRegistry, onChanged, onReload } = props ?? {};
+  const {
+    showDetailsIsPrimary,
+    resolvedActions,
+    url,
+    localPath,
+  } = resolveEntryActionsState(
+    runtimeRegistry ?? FALLBACK_RUNTIME_REGISTRY,
+    entry,
   );
-  const showDetailsIsPrimary =
-    orderedRuntimeActions[0] !== undefined &&
-    isShowDetailAction(orderedRuntimeActions[0]);
-  const resolvedActions = orderedRuntimeActions.filter(
-    (action) => !isShowDetailAction(action),
-  );
-  const url = entry.properties.URL;
-  const localPath = entry.properties.PATH;
 
   async function handleResolvedAction(action: ResolvedAction) {
     try {
@@ -73,7 +59,7 @@ export function EntryActions(props: {
 
   return (
     <ActionPanel>
-      {showDetailsIsPrimary ? (
+      {entry && showDetailsIsPrimary ? (
         <Action.Push
           title="Show Details"
           icon={Icon.AppWindowSidebarLeft}
@@ -88,25 +74,29 @@ export function EntryActions(props: {
           onAction={() => handleResolvedAction(action)}
         />
       ))}
-      {!showDetailsIsPrimary ? (
+      {entry && !showDetailsIsPrimary ? (
         <Action.Push
           title="Show Details"
           icon={Icon.AppWindowSidebarLeft}
           target={<EntryDetail entry={entry} />}
         />
       ) : null}
-      <Action.Push
-        title="Edit Resource"
-        icon={Icon.Pencil}
-        shortcut={{ modifiers: ["cmd"], key: "e" }}
-        target={<ResourceFormFlow entry={entry} onSaved={onChanged} />}
-      />
+      {entry ? (
+        <Action.Push
+          title="Edit Resource"
+          icon={Icon.Pencil}
+          shortcut={{ modifiers: ["cmd"], key: "e" }}
+          target={<ResourceFormFlow entry={entry} onSaved={onChanged} />}
+        />
+      ) : null}
       {localPath ? (
         <Action.CopyToClipboard title="Copy Local Path" content={localPath} />
       ) : null}
       {url ? <Action.CopyToClipboard title="Copy URL" content={url} /> : null}
-      <Action.CopyToClipboard title="Copy Title" content={entry.title} />
-      {entry.body ? (
+      {entry ? (
+        <Action.CopyToClipboard title="Copy Title" content={entry.title} />
+      ) : null}
+      {entry?.body ? (
         <Action.CopyToClipboard title="Copy Body" content={entry.body} />
       ) : null}
       {onReload ? (
@@ -119,10 +109,6 @@ export function EntryActions(props: {
       ) : null}
     </ActionPanel>
   );
-}
-
-function isShowDetailAction(action: ResolvedAction): boolean {
-  return action.mode === "builtin" && action.builtin === "show-detail";
 }
 
 function getActionIcon(action: ResolvedAction): Icon {

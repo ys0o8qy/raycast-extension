@@ -151,6 +151,13 @@ function validateActionDefinition(
     );
   }
 
+  if (definition.requires !== undefined) {
+    action.requires = requireStringArray(
+      definition.requires,
+      `Action ${actionId} field requires`,
+    );
+  }
+
   if (definition.env !== undefined) {
     action.env = requireStringRecord(
       definition.env,

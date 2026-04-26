@@ -80,8 +80,8 @@ export interface ResourceLibraryConfig {
 }
 
 export interface RuntimeRegistry {
-  actions: Map<string, ActionDefinition>;
-  types: Map<string, TypeDefinition>;
+  actions: Record<string, ActionDefinition>;
+  types: Record<string, TypeDefinition>;
 }
 
 export interface OrgNode {
@@ -112,7 +112,7 @@ export interface LibraryEntry {
 export interface NewEntryInput {
   id?: string;
   title: string;
-  type: EntryType;
+  type: RuntimeEntryType;
   tags: string[];
   groupPath: string[];
   url?: string;

@@ -2,14 +2,14 @@
 
 ## Summary
 
-This document proposes an extensible architecture for the Raycast resource library so that:
+This document records the approved runtime architecture for the Raycast resource library so that:
 
 - resource instances continue to live in a user-managed Org file
-- type and action extensions are declared in a separate JSON config file
+- type and action extensions are declared in a separate JSON config file selected through the Raycast `configFilePath` preference
 - adding most new resource types does not require code changes
 - actions can execute arbitrary local commands with entry data mapped into arguments and environment variables
 
-The design keeps a small set of built-in semantic base types in code and moves higher-level type definitions and actions into configuration.
+The implemented design keeps a small set of built-in semantic base types in code and moves higher-level type definitions and actions into configuration.
 
 ## Goals
 
@@ -30,13 +30,13 @@ The design keeps a small set of built-in semantic base types in code and moves h
 
 ## Current Problems
 
-The current implementation hard-codes resource behavior in several places:
+The original implementation hard-coded resource behavior in several places:
 
 - `EntryType` is a closed union in `src/types.ts`.
 - detection and search semantics assume the built-in types in `src/resource.ts`
 - add/edit flow exposes only built-in types in `src/add-entry.tsx`
 - action behavior is dispatched with a `switch` in `src/actions.tsx`
-- schema command support is a type-specific special case in `src/schema-command.ts`
+- schema command support was a type-specific special case before moving into `src/action-runner.ts` as compatibility behavior
 
 This means introducing a new type requires coordinated edits across model, parser assumptions, forms, and actions. The code does not currently distinguish between:
 
@@ -69,7 +69,7 @@ Built-in compatibility remains:
 
 ### 2. Manifest Layer
 
-A new JSON config file declares:
+An optional JSON config file declares:
 
 - action definitions
 - type definitions
@@ -81,7 +81,7 @@ Recommended filename:
 
 - `resource-library.config.json`
 
-The config file is not a storage backend. It is a runtime manifest.
+The config file is not a storage backend. It is a runtime manifest. It is loaded only when the Raycast `Runtime Config Path` preference (`configFilePath`) is set.
 
 ### 3. Runtime Layer
 
@@ -153,55 +153,50 @@ The application should still ship with built-in runtime types for current behavi
 - `image` extends `builtin:asset`
 - `text` extends `builtin:text`
 - `schema` extends `builtin:schema`
+- `generic` extends `builtin:generic` and acts as the fallback runtime type when an entry `TYPE` is unknown to the current registry
 
 Future config-defined types such as `snippet`, `file`, and `directory` can extend the semantic base that best matches their data shape.
 
 ## Config Format
 
-Recommended shape:
+Implemented shape:
 
 ```json
 {
   "version": 1,
   "actions": {
-    "open-url": {
-      "title": "Open URL",
-      "mode": "command",
-      "command": "open",
-      "args": ["{{url}}"]
-    },
     "open-file": {
       "title": "Open File",
       "mode": "command",
       "command": "open",
-      "args": ["{{path}}"]
+      "args": ["{{path}}"],
+      "requires": ["path"]
     },
     "reveal-path": {
       "title": "Reveal in Finder",
       "mode": "command",
       "command": "open",
-      "args": ["-R", "{{path}}"]
+      "args": ["-R", "{{path}}"],
+      "requires": ["path"]
     },
     "copy-body": {
       "title": "Copy Body",
       "mode": "builtin",
       "builtin": "copy-to-clipboard",
-      "value": "{{body}}"
+      "value": "{{body}}",
+      "requires": ["body"]
     }
   },
   "types": {
-    "link": {
-      "extends": "builtin:link",
-      "defaultAction": "open-url",
-      "actions": ["open-url"]
-    },
     "snippet": {
       "extends": "builtin:text",
+      "storageRoot": "Snippets",
       "defaultAction": "copy-body",
-      "actions": ["copy-body"]
+      "actions": ["copy-body", "show-detail"]
     },
     "file": {
       "extends": "builtin:file",
+      "storageRoot": "Files",
       "defaultAction": "open-file",
       "actions": ["open-file", "reveal-path"]
     }
@@ -307,15 +302,14 @@ Supported template variables should include:
 - `{{tags_json}}`
 - `{{property.NAME}}`
 
-Recommended environment variables for every command action:
+Command actions do not receive automatic entry metadata environment variables. If a command needs entry values in the environment, declare them explicitly in the action `env` map and use templates there.
+
+Legacy schema command compatibility remains available for `schema` entries. That compatibility action injects:
 
 - `RESOURCE_LIBRARY_ENTRY_ID`
 - `RESOURCE_LIBRARY_ENTRY_TITLE`
 - `RESOURCE_LIBRARY_ENTRY_TYPE`
 - `RESOURCE_LIBRARY_ENTRY_TAGS`
-- `RESOURCE_LIBRARY_ENTRY_BODY`
-- `RESOURCE_LIBRARY_ENTRY_URL`
-- `RESOURCE_LIBRARY_ENTRY_PATH`
 
 Important design choice: commands should be executed without a shell by default. Use direct process spawning with explicit argument arrays. This avoids quoting bugs and accidental shell injection behavior.
 
@@ -335,16 +329,14 @@ When loading an entry:
 1. parse raw Org entry into `LibraryEntry`
 2. look up `entry.type` in the runtime registry
 3. if found, resolve its declared semantic base and actions
-4. if not found, use a fallback `builtin:generic` runtime
+4. if not found, use the built-in `generic` runtime type, which extends `builtin:generic`
 
-Unknown types should remain visible instead of disappearing. The fallback experience should offer:
+Unknown types should remain visible instead of disappearing. The runtime fallback experience should offer:
 
 - `Show Details`
 - `Copy Body` when body exists
-- `Copy URL` when `URL` exists
-- `Copy Path` when `PATH` exists
 
-This makes the system resilient while users experiment with config.
+The action panel also keeps code-owned utility actions such as `Copy URL`, `Copy Local Path`, `Copy Title`, edit, and reload.
 
 ## UI Impact
 
@@ -436,7 +428,7 @@ Add a dedicated config module, for example:
 
 Responsibilities:
 
-- load JSON from preference-configured path or default adjacent path
+- load JSON from the preference-configured `configFilePath`
 - parse JSON safely
 - validate structure and field requirements
 - merge user config with built-in definitions
@@ -454,25 +446,25 @@ Validation errors should be explicit and actionable, for example:
 - `src/types.ts`: persisted entry model and runtime config model types
 - `src/config.ts`: config file loading and validation
 - `src/runtime.ts`: registry building and type resolution
-- `src/action-runner.ts`: built-in and command action execution
+- `src/action-runner.ts`: built-in and command action execution plus schema command compatibility resolution
 - `src/actions.tsx`: UI rendering from resolved runtime actions
 - `src/resource.ts`: detection and search helpers using semantic bases
 - `src/storage.ts`: generic entry read and write
 - `src/org/parser.ts`: parse generic types
 - `src/org/serializer.ts`: route by semantic base instead of closed type enum
 
-The old `src/schema-command.ts` behavior should be folded into the generic action runner. Schema should no longer be a privileged type-specific command path.
+The old schema command behavior now lives in `resolveSchemaCommandAction` inside `src/action-runner.ts` and is inserted as a compatibility action for `schema` entries. It is compatibility behavior, not the preferred extension mechanism.
 
 ## Migration Plan
 
-Recommended migration sequence:
+Implemented migration sequence:
 
 1. Open `LibraryEntry.type` from union to string without changing UI behavior.
 2. Introduce runtime registry with built-in types only.
 3. Move action dispatch from `switch` to registry-driven resolution.
 4. Add JSON config loading and validation.
 5. Register custom types from config.
-6. Replace schema-specific command execution with generic command actions.
+6. Replace schema-specific command execution with generic command actions while preserving schema command compatibility.
 7. Update add/edit type dropdown to use runtime registry.
 8. Update serializer to route by semantic base headings.
 
@@ -519,6 +511,6 @@ The target architecture is:
 - small built-in semantic base layer in code
 - open string-based runtime type system
 - registry-driven action rendering and execution
-- generic command runner replacing type-specific command logic
+- generic command runner plus schema command compatibility for legacy entries
 
 This is the smallest architecture change that gives strong extensibility without turning the extension into a fully declarative UI platform.

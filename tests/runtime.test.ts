@@ -29,8 +29,75 @@ test("buildRuntimeRegistry merges built-in and user-defined runtime types", () =
     },
   });
 
-  assert.equal(registry.types.get("snippet")?.extends, "builtin:text");
-  assert.equal(registry.types.get("link")?.extends, "builtin:link");
+  assert.equal(registry.types.snippet?.extends, "builtin:text");
+  assert.equal(registry.types.link?.extends, "builtin:link");
+});
+
+test("runtime registry remains usable after JSON serialization", () => {
+  const registry = JSON.parse(
+    JSON.stringify(
+      buildRuntimeRegistry({
+        version: 1,
+        actions: {
+          "copy-title": {
+            title: "Copy Title",
+            mode: "builtin",
+            builtin: "copy-to-clipboard",
+            value: "{{title}}",
+          },
+        },
+        types: {
+          snippet: {
+            extends: "builtin:text",
+            defaultAction: "copy-title",
+            actions: ["copy-title", "show-detail"],
+          },
+        },
+      }),
+    ),
+  );
+
+  const defaultAction = resolveDefaultActionForEntry(
+    registry,
+    createEntry({
+      title: "Serialized Registry",
+      type: "snippet",
+      body: "body text",
+    }),
+  );
+
+  assert.deepEqual(defaultAction, {
+    id: "copy-title",
+    title: "Copy Title",
+    mode: "builtin",
+    builtin: "copy-to-clipboard",
+    value: "Serialized Registry",
+  });
+});
+
+test("runtime helpers recover built-in definitions from stale serialized registries", () => {
+  const staleRegistry = { actions: {}, types: {} };
+
+  const defaultAction = resolveDefaultActionForEntry(
+    staleRegistry,
+    createEntry({
+      type: "text",
+      body: "body text",
+    }),
+  );
+  const fallbackActions = resolveEntryActions(
+    staleRegistry,
+    createEntry({
+      type: "unknown-runtime-type",
+      body: "opaque body",
+    }),
+  );
+
+  assert.equal(defaultAction?.id, "paste-body");
+  assert.deepEqual(
+    fallbackActions.map((action) => action.id),
+    ["show-detail", "copy-body"],
+  );
 });
 
 test("buildRuntimeRegistry rejects type references to missing actions", () => {

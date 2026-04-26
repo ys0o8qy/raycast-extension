@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "actions": {
+    "open-file": {
+      "title": "Open File",
+      "mode": "command",
+      "command": "open",
+      "args": ["{{path}}"],
+      "requires": ["path"]
+    },
+    "reveal-in-finder": {
+      "title": "Reveal in Finder",
+      "mode": "command",
+      "command": "open",
+      "args": ["-R", "{{path}}"],
+      "requires": ["path"]
+    },
+    "open-directory": {
+      "title": "Open Directory",
+      "mode": "command",
+      "command": "open",
+      "args": ["{{path}}"],
+      "requires": ["path"]
+    },
+    "copy-entry-summary": {
+      "title": "Copy Entry Summary",
+      "mode": "command",
+      "command": "pbcopy",
+      "stdin": "{{title}}\nType: {{type}}\nTags: {{tags_csv}}\n\n{{body}}",
+      "env": {
+        "RESOURCE_LIBRARY_SAMPLE_TAGS": "{{tags_csv}}"
+      },
+      "requires": ["body"]
+    }
+  },
+  "types": {
+    "snippet": {
+      "extends": "builtin:text",
+      "storageRoot": "Snippets",
+      "defaultAction": "copy-body",
+      "actions": ["copy-body", "paste-body", "copy-entry-summary", "show-detail"]
+    },
+    "file": {
+      "extends": "builtin:file",
+      "storageRoot": "Files",
+      "defaultAction": "open-file",
+      "actions": ["open-file", "reveal-in-finder", "show-detail"]
+    },
+    "directory": {
+      "extends": "builtin:directory",
+      "storageRoot": "Directories",
+      "defaultAction": "open-directory",
+      "actions": ["open-directory", "show-detail"]
+    }
+  }
+}
