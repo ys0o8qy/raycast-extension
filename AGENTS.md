@@ -12,7 +12,7 @@ The project favors tags over groups. Existing grouped Org files are still parsed
 
 - `search-library`: User-facing title `Search Resources`. Main resource search view. Supports tag-aware queries such as `#docs #raycast keyboard`.
 - `browse-tags`: User-facing title `Browse Tags`. Groups visible resources by tag.
-- `add-entry`: User-facing title `Add Resource`. Two-step resource creation flow with clipboard defaults and tag selection.
+- `add-entry`: User-facing title `Add Resource`. Two-step resource creation flow with clipboard defaults and tag selection. Also accepts a Raycast `launchContext` for deeplink-driven adds (see "Deeplink Add" below).
 
 The removed `browse-groups` command should not be reintroduced unless group-based organization becomes a product requirement again.
 
@@ -55,6 +55,21 @@ Manifest shape:
 General command actions are declared in the manifest and may template entry data into `command`, `args`, `env`, and `stdin`.
 
 Schema resources still support legacy per-entry `:SCHEMA_COMMAND:` and optional `:SCHEMA_ARGS:` properties as a compatibility action. That compatibility action sends the schema body to stdin and provides `RESOURCE_LIBRARY_ENTRY_ID`, `RESOURCE_LIBRARY_ENTRY_TITLE`, `RESOURCE_LIBRARY_ENTRY_TYPE`, and `RESOURCE_LIBRARY_ENTRY_TAGS` through the environment. Prefer manifest-defined command actions for new behavior.
+
+## Deeplink Add
+
+The `add-entry` command reads a Raycast `launchContext` (top-level `LaunchProps.launchContext`, the standard Raycast deeplink mechanism — not custom `?content=...` query strings).
+
+`src/launch-context.ts` exposes a pure helper, `resolveAddEntryLaunchContext`, that normalizes the untrusted launch context into `{ title, type, resource, tags, autoSave }`. Behavior:
+
+- Returns `undefined` when there is no usable `content` (any non-string or empty/whitespace value); the command then falls back to the regular UI with clipboard defaults.
+- `type` is accepted only when it is a visible runtime type id (per `selectVisibleTypeIds(getRuntimeTypeIds(...))`); otherwise it falls back to `detectResourceType`.
+- `tags` accepts either a string array or a single string split on commas/whitespace, then runs through `normalizeTags`.
+- `autoSave` is only honored when the value is the boolean `true`.
+
+`AddEntryCommand` (top-level only) handles `launchContext`. The reused `ResourceFormFlow` in `actions.tsx` (edit flow) intentionally ignores it.
+
+When `autoSave` is true and `title` + `content` + persistable type are all present, the command writes the entry through `saveEntry`, calls `showHUD("Added resource")`, and then `popToRoot()` — no UI is shown beyond a brief loading view. If essentials are missing or saving throws, a Toast explains the reason and the prefilled two-step UI is shown as a fallback.
 
 ## Org Storage Flow
 
@@ -159,7 +174,7 @@ The generator lives at `scripts/generate-icons.mjs` and uses `sharp` to render f
 Run these before claiming a change is complete:
 
 ```bash
-./node_modules/.bin/tsc tests/resource.test.ts tests/parser-runtime.test.ts tests/config.test.ts tests/runtime.test.ts tests/action-runner.test.ts tests/serializer-runtime.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js /tmp/raycast-org-bookmarks-tests/tests/parser-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/config.test.js /tmp/raycast-org-bookmarks-tests/tests/runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/action-runner.test.js /tmp/raycast-org-bookmarks-tests/tests/serializer-runtime.test.js
+./node_modules/.bin/tsc tests/resource.test.ts tests/parser-runtime.test.ts tests/config.test.ts tests/runtime.test.ts tests/action-runner.test.ts tests/serializer-runtime.test.ts tests/launch-context.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js /tmp/raycast-org-bookmarks-tests/tests/parser-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/config.test.js /tmp/raycast-org-bookmarks-tests/tests/runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/action-runner.test.js /tmp/raycast-org-bookmarks-tests/tests/serializer-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/launch-context.test.js
 npm run build
 npm run generate-icons
 ./node_modules/.bin/ray build

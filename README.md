@@ -81,6 +81,30 @@ For that compatibility path:
 
 For new setups, prefer manifest-defined command actions over entry-specific schema command properties.
 
+## Deeplink: Auto-add a Resource
+
+The `Add Resource` command accepts a Raycast `launchContext` so other tools can add resources via deeplinks.
+
+```text
+raycast://extensions/<author>/<extension>/add-entry?context=<URL-encoded JSON>
+```
+
+Supported context fields:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `content` | string | Required. The resource value (URL, text, path, or `xxx://` schema). |
+| `title` | string | Optional. Required when `autoSave` is `true`. |
+| `type` | string | Optional. Any visible runtime type id (e.g. `link`, `image`, `text`, `schema`, or a manifest-defined type). Falls back to auto-detection when missing or unknown. |
+| `tags` | string[] \| string | Optional. Strings are split on commas/whitespace. Tags are normalized and deduped. |
+| `autoSave` | boolean | Optional. When `true`, save without showing the form. Falls back to the prefilled UI (with a toast) if `title`/`content` are missing. |
+
+Example payload (before URL-encoding):
+
+```json
+{ "content": "https://example.com", "type": "link", "title": "Example", "tags": ["docs"], "autoSave": true }
+```
+
 ## Development
 
 ```bash
