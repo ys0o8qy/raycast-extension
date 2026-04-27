@@ -4,14 +4,16 @@ import {
   Clipboard,
   Form,
   Icon,
+  LaunchProps,
   List,
+  popToRoot,
   showHUD,
   showToast,
   Toast,
   useNavigation,
 } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   detectResourceType,
   getAllTags,
@@ -29,6 +31,11 @@ import {
   getRuntimeTypeDefinition,
   getRuntimeTypeIds,
 } from "./runtime";
+import {
+  AddEntryLaunchContext,
+  ResolvedAddEntryLaunchContext,
+  resolveAddEntryLaunchContext,
+} from "./launch-context";
 import {
   BuiltinEntryType,
   LibraryEntry,
@@ -54,22 +61,38 @@ const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
   types: {},
 });
 
-export default function AddEntryCommand() {
-  return <ResourceFormFlow />;
+export default function AddEntryCommand(
+  props: LaunchProps<{ launchContext?: AddEntryLaunchContext }>,
+) {
+  return <ResourceFormFlow launchContext={props.launchContext} />;
 }
 
 export function ResourceFormFlow(props: {
   entry?: LibraryEntry;
   onSaved?: () => void;
+  launchContext?: AddEntryLaunchContext;
 }) {
-  const { entry, onSaved } = props;
+  const { entry, onSaved, launchContext } = props;
   const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
     useCachedPromise(loadRuntimeRegistry);
   const visibleTypeIds = selectVisibleTypeIds([
     ...getRuntimeTypeIds(runtimeRegistry),
     entry?.type || "",
   ]);
-  const [draft, setDraft] = useState<DraftResource | undefined>();
+  // Editing an existing entry never honors a deeplink launch context — that
+  // flow is only used from the top-level Add Resource command.
+  const resolvedLaunchContext = entry
+    ? undefined
+    : resolveAddEntryLaunchContext(launchContext, runtimeRegistry);
+  const [draft, setDraft] = useState<DraftResource | undefined>(() =>
+    resolvedLaunchContext
+      ? {
+          title: resolvedLaunchContext.title,
+          type: resolvedLaunchContext.type,
+          resource: resolvedLaunchContext.resource,
+        }
+      : undefined,
+  );
   const [clipboardDefaults, setClipboardDefaults] = useState<
     {
       type: BuiltinEntryType;
@@ -79,9 +102,17 @@ export function ResourceFormFlow(props: {
     type: "text",
     resource: "",
   });
+  const autoSaveTriggeredRef = useRef(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<
+    "idle" | "running" | "skipped" | "saved"
+  >(
+    resolvedLaunchContext?.autoSave ? "running" : "idle",
+  );
 
   useEffect(() => {
-    if (entry) {
+    // Skip the clipboard read when an entry is being edited or when the
+    // deeplink already provided initial values.
+    if (entry || resolvedLaunchContext) {
       return;
     }
 
@@ -97,7 +128,34 @@ export function ResourceFormFlow(props: {
     loadClipboard().catch(() => {
       // Clipboard access is a convenience; an empty form is still useful.
     });
-  }, [entry]);
+  }, [entry, resolvedLaunchContext]);
+
+  useEffect(() => {
+    if (!resolvedLaunchContext || !resolvedLaunchContext.autoSave) {
+      return;
+    }
+    if (autoSaveTriggeredRef.current) {
+      return;
+    }
+    autoSaveTriggeredRef.current = true;
+
+    void runAutoSave(resolvedLaunchContext, runtimeRegistry).then((result) => {
+      if (result.kind === "saved") {
+        setAutoSaveStatus("saved");
+        onSaved?.();
+      } else {
+        setAutoSaveStatus("skipped");
+      }
+    });
+  }, [resolvedLaunchContext, runtimeRegistry, onSaved]);
+
+  if (autoSaveStatus === "running" || autoSaveStatus === "saved") {
+    return (
+      <List isLoading navigationTitle="Saving Resource">
+        <List.EmptyView title="Saving resource…" icon={Icon.SaveDocument} />
+      </List>
+    );
+  }
 
   if (draft) {
     return (
@@ -106,6 +164,7 @@ export function ResourceFormFlow(props: {
         entry={entry}
         onSaved={onSaved}
         runtimeRegistry={runtimeRegistry}
+        initialTags={resolvedLaunchContext?.tags}
       />
     );
   }
@@ -231,13 +290,14 @@ function TagStep(props: {
   entry?: LibraryEntry;
   onSaved?: () => void;
   runtimeRegistry: RuntimeRegistry;
+  initialTags?: string[];
 }) {
-  const { draft, entry, onSaved, runtimeRegistry } = props;
+  const { draft, entry, onSaved, runtimeRegistry, initialTags } = props;
   const { pop } = useNavigation();
   const { data = [], isLoading } = useCachedPromise(loadEntries);
   const existingTags = getAllTags(data);
   const [selectedTags, setSelectedTags] = useState<string[]>(() =>
-    normalizeTags(entry?.tags || []),
+    normalizeTags(initialTags ?? entry?.tags ?? []),
   );
   const [searchText, setSearchText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -471,4 +531,75 @@ function buildEntryInput(
     tags,
     ...mapResourceInputToEntryFields(semanticType, resource),
   };
+}
+
+type AutoSaveResult =
+  | { kind: "saved" }
+  | { kind: "skipped"; reason: string };
+
+/**
+ * Persist a deeplink-launched resource without showing the add-entry UI.
+ *
+ * Returns `skipped` (with a user-visible toast already shown) when the
+ * launch context lacks the fields required to save unattended; the caller
+ * should then fall back to the normal two-step UI so the user can finish.
+ */
+async function runAutoSave(
+  resolved: ResolvedAddEntryLaunchContext,
+  runtimeRegistry: RuntimeRegistry,
+): Promise<AutoSaveResult> {
+  const title = resolved.title.trim();
+  const resource = resolved.resource.trim();
+
+  if (!title) {
+    await showToast({
+      style: Toast.Style.Failure,
+      title: "Cannot auto-save without a title",
+      message: "Provide `title` in the deeplink launch context, or finish in the form.",
+    });
+    return { kind: "skipped", reason: "missing-title" };
+  }
+
+  if (!resource) {
+    await showToast({
+      style: Toast.Style.Failure,
+      title: "Cannot auto-save without content",
+      message: "Provide `content` in the deeplink launch context.",
+    });
+    return { kind: "skipped", reason: "missing-content" };
+  }
+
+  if (!isRuntimeTypePersistable(resolved.type)) {
+    await showToast({
+      style: Toast.Style.Failure,
+      title: "This resource type cannot be saved yet",
+      message: `${resolved.type} needs serializer support before it can be persisted.`,
+    });
+    return { kind: "skipped", reason: "type-not-persistable" };
+  }
+
+  const semanticType = getRuntimeTypeDefinition(
+    runtimeRegistry,
+    resolved.type,
+  ).extends;
+  const input = buildEntryInput(
+    { title, type: resolved.type, resource },
+    normalizeTags(resolved.tags),
+    semanticType,
+    resolved.type,
+  );
+
+  try {
+    await saveEntry(input);
+    await showHUD("Added resource");
+    await popToRoot();
+    return { kind: "saved" };
+  } catch (error) {
+    await showToast({
+      style: Toast.Style.Failure,
+      title: "Failed to save resource",
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return { kind: "skipped", reason: "save-failed" };
+  }
 }
