@@ -14,6 +14,27 @@ const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
   types: {},
 });
 
+/**
+ * Calculate the maximum number of tags to display based on title length.
+ * Prevents UI crowding when titles are long or there are many tags.
+ */
+function getMaxVisibleTags(title: string, totalTags: number): number {
+  if (totalTags === 0) return 0;
+
+  // Base calculation on title length to prevent overflow
+  const titleLength = title.length;
+
+  if (titleLength <= 20) {
+    return Math.min(totalTags, 4);
+  } else if (titleLength <= 40) {
+    return Math.min(totalTags, 3);
+  } else if (titleLength <= 60) {
+    return Math.min(totalTags, 2);
+  } else {
+    return Math.min(totalTags, 1);
+  }
+}
+
 export default function SearchLibraryCommand() {
   const { data = [], isLoading, revalidate } = useCachedPromise(loadEntries);
   const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
@@ -31,28 +52,37 @@ export default function SearchLibraryCommand() {
       filtering={false}
       throttle
     >
-      {entries.map((entry) => (
-        <List.Item
-          key={entry.id}
-          title={entry.title}
-          accessories={entry.tags.slice(0, 4).map((tag) => ({ tag }))}
-          icon={iconForType(entry.type)}
-          detail={
-            <List.Item.Detail
-              markdown={renderEntryMarkdown(entry)}
-              metadata={<Metadata entry={entry} />}
-            />
-          }
-          actions={
-            <EntryActions
-              entry={entry}
-              runtimeRegistry={runtimeRegistry}
-              onChanged={revalidate}
-              onReload={revalidate}
-            />
-          }
-        />
-      ))}
+      {entries.map((entry) => {
+        const maxTags = getMaxVisibleTags(entry.title, entry.tags.length);
+        const visibleTags = entry.tags.slice(0, maxTags);
+        const hiddenCount = entry.tags.length - maxTags;
+
+        return (
+          <List.Item
+            key={entry.id}
+            title={entry.title}
+            accessories={[
+              ...visibleTags.map((tag) => ({ tag })),
+              ...(hiddenCount > 0 ? [{ text: `+${hiddenCount}` }] : []),
+            ]}
+            icon={iconForType(entry.type)}
+            detail={
+              <List.Item.Detail
+                markdown={renderEntryMarkdown(entry)}
+                metadata={<Metadata entry={entry} />}
+              />
+            }
+            actions={
+              <EntryActions
+                entry={entry}
+                runtimeRegistry={runtimeRegistry}
+                onChanged={revalidate}
+                onReload={revalidate}
+              />
+            }
+          />
+        );
+      })}
     </List>
   );
 }
