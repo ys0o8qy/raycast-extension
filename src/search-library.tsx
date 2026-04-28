@@ -104,20 +104,51 @@ function iconForType(type: LibraryEntry["type"]): Icon {
 
 function Metadata(props: { entry: LibraryEntry }) {
   const { entry } = props;
-  const metadataEntries = Object.entries(entry.properties).filter(
-    ([key]) => key !== "FORMAT" && key !== "DESCRIPTION",
+
+  // Display key properties in a structured order
+  const url = entry.properties.URL;
+  const path = entry.properties.PATH;
+  const schemaKind = entry.properties.SCHEMA_KIND;
+
+  // Get remaining properties excluding well-known ones
+  const otherProperties = Object.entries(entry.properties).filter(
+    ([key]) =>
+      key !== "FORMAT" &&
+      key !== "DESCRIPTION" &&
+      key !== "URL" &&
+      key !== "PATH" &&
+      key !== "SCHEMA_KIND",
   );
 
   return (
     <List.Item.Detail.Metadata>
-      {entry.tags.length > 0 ? (
+      {entry.tags.length > 0 && (
         <List.Item.Detail.Metadata.TagList title="Tags">
           {entry.tags.map((tag) => (
             <List.Item.Detail.Metadata.TagList.Item key={tag} text={tag} />
           ))}
         </List.Item.Detail.Metadata.TagList>
-      ) : null}
-      {metadataEntries.map(([key, value]) => (
+      )}
+
+      <List.Item.Detail.Metadata.Label title="Type" text={entry.type} />
+
+      {url && (
+        <List.Item.Detail.Metadata.Link
+          title="URL"
+          text={url}
+          target={url}
+        />
+      )}
+
+      {path && (
+        <List.Item.Detail.Metadata.Label title="Path" text={path} />
+      )}
+
+      {schemaKind && (
+        <List.Item.Detail.Metadata.Label title="Schema Kind" text={schemaKind} />
+      )}
+
+      {otherProperties.map(([key, value]) => (
         <List.Item.Detail.Metadata.Label key={key} title={key} text={value} />
       ))}
     </List.Item.Detail.Metadata>
