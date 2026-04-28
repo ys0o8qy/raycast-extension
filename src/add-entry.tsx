@@ -386,6 +386,8 @@ function TagStep(props: {
     setSearchText("");
   }
 
+  const saveActionTitle = entry ? "Update Resource" : "Save Resource";
+
   return (
     <List
       isLoading={isLoading || isSaving}
@@ -395,44 +397,23 @@ function TagStep(props: {
       onSearchTextChange={setSearchText}
       filtering={false}
     >
-      {!normalizedQuery ? (
-        <List.Section title="Continue">
-          <List.Item
-            title={entry ? "Update Resource" : "Save Resource"}
-            subtitle={
-              selectedTags.length > 0
-                ? `${selectedTags.length} tags selected`
-                : "No tags selected"
-            }
-            icon={Icon.Check}
-            actions={
-              <ActionPanel>
-                <Action
-                  title={entry ? "Update Resource" : "Save Resource"}
-                  icon={Icon.Check}
-                  onAction={handleSave}
-                />
-              </ActionPanel>
-            }
-          />
-        </List.Section>
-      ) : null}
-
       {canCreateTag ? (
-        <List.Section title="Create">
+        <List.Section title="Create New Tag">
           <List.Item
-            title={`Create #${normalizedQuery}`}
+            title={`#${normalizedQuery}`}
+            subtitle="Press Enter to create and select this tag"
             icon={Icon.PlusCircle}
             actions={
               <ActionPanel>
                 <Action
-                  title="Create Tag"
+                  title="Create and Select Tag"
                   icon={Icon.Plus}
                   onAction={createTag}
                 />
                 <Action
-                  title={entry ? "Update Resource" : "Save Resource"}
+                  title={saveActionTitle}
                   icon={Icon.Check}
+                  shortcut={{ modifiers: ["cmd"], key: "s" }}
                   onAction={handleSave}
                 />
               </ActionPanel>
@@ -442,23 +423,24 @@ function TagStep(props: {
       ) : null}
 
       {selectedTags.length > 0 ? (
-        <List.Section title="Selected Tags" subtitle={`${selectedTags.length}`}>
+        <List.Section title="Selected Tags" subtitle={`${selectedTags.length} selected`}>
           {selectedTags.map((tag) => (
             <List.Item
               key={tag}
               title={`#${tag}`}
               icon={Icon.CheckCircle}
-              accessories={[{ text: "Selected" }]}
+              accessories={[{ text: "✓" }]}
               actions={
                 <ActionPanel>
                   <Action
-                    title="Remove Tag"
+                    title="Deselect Tag"
                     icon={Icon.XMarkCircle}
                     onAction={() => toggleTag(tag)}
                   />
                   <Action
-                    title={entry ? "Update Resource" : "Save Resource"}
+                    title={saveActionTitle}
                     icon={Icon.Check}
+                    shortcut={{ modifiers: ["cmd"], key: "s" }}
                     onAction={handleSave}
                   />
                 </ActionPanel>
@@ -470,13 +452,14 @@ function TagStep(props: {
 
       {visibleExistingTags.length > 0 ? (
         <List.Section
-          title="Existing Tags"
-          subtitle={`${visibleExistingTags.length}`}
+          title={normalizedQuery ? "Available Tags" : "All Tags"}
+          subtitle={`${visibleExistingTags.length} available`}
         >
           {visibleExistingTags.map((tag) => (
             <List.Item
               key={tag}
               title={`#${tag}`}
+              subtitle="Press Enter to select this tag"
               icon={Icon.Tag}
               actions={
                 <ActionPanel>
@@ -486,8 +469,9 @@ function TagStep(props: {
                     onAction={() => toggleTag(tag)}
                   />
                   <Action
-                    title={entry ? "Update Resource" : "Save Resource"}
+                    title={saveActionTitle}
                     icon={Icon.Check}
+                    shortcut={{ modifiers: ["cmd"], key: "s" }}
                     onAction={handleSave}
                   />
                 </ActionPanel>
@@ -495,6 +479,32 @@ function TagStep(props: {
             />
           ))}
         </List.Section>
+      ) : null}
+
+      {!canCreateTag && visibleExistingTags.length === 0 ? (
+        <List.EmptyView
+          title={
+            selectedTags.length > 0
+              ? `${selectedTags.length} tag${selectedTags.length === 1 ? "" : "s"} selected`
+              : "No tags yet"
+          }
+          description={
+            selectedTags.length > 0
+              ? `Press Cmd+S to ${entry ? "update" : "save"} resource`
+              : `Start typing to create a new tag, or press Cmd+S to ${entry ? "update" : "save"} without tags`
+          }
+          icon={selectedTags.length > 0 ? Icon.CheckCircle : Icon.Tag}
+          actions={
+            <ActionPanel>
+              <Action
+                title={saveActionTitle}
+                icon={Icon.Check}
+                shortcut={{ modifiers: ["cmd"], key: "s" }}
+                onAction={handleSave}
+              />
+            </ActionPanel>
+          }
+        />
       ) : null}
     </List>
   );
