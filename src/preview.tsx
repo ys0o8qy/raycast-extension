@@ -35,24 +35,9 @@ function imageMarkdown(entry: LibraryEntry): string[] {
 }
 
 export function renderEntryMarkdown(entry: LibraryEntry): string {
-  const lines = [
-    `# ${entry.title}`,
-    `- **Tags:** ${entry.tags.length ? entry.tags.join(", ") : "—"}`,
-  ];
+  const lines = [`# ${entry.title}`];
 
-  const url = entry.properties.URL;
-  const localPath = entry.properties.PATH;
   const schemaKind = entry.properties.SCHEMA_KIND;
-
-  if (url) {
-    lines.push(`- **URL:** ${url}`);
-  }
-  if (localPath) {
-    lines.push(`- **Path:** ${localPath}`);
-  }
-  if (schemaKind) {
-    lines.push(`- **Schema Kind:** ${schemaKind}`);
-  }
 
   switch (entry.type) {
     case "link":
