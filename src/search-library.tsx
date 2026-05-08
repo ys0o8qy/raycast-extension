@@ -14,25 +14,29 @@ const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
   types: {},
 });
 
+const MAX_INLINE_TAG_LENGTH = 12;
+const TITLE_LENGTH_WITH_INLINE_TAG = 18;
+
 /**
- * Calculate the maximum number of tags to display based on title length.
- * Prevents UI crowding when titles are long or there are many tags.
+ * Keep the search result row compact so accessories never squeeze or overlap
+ * the resource title in Raycast's narrow list layout.
  */
-function getMaxVisibleTags(title: string, totalTags: number): number {
-  if (totalTags === 0) return 0;
+function buildSearchAccessories(entry: LibraryEntry) {
+  if (entry.tags.length === 0) return [];
 
-  // Base calculation on title length to prevent overflow
-  const titleLength = title.length;
+  const tooltip = entry.tags.join(", ");
 
-  if (titleLength <= 20) {
-    return Math.min(totalTags, 4);
-  } else if (titleLength <= 40) {
-    return Math.min(totalTags, 3);
-  } else if (titleLength <= 60) {
-    return Math.min(totalTags, 2);
-  } else {
-    return Math.min(totalTags, 1);
+  if (entry.tags.length === 1 && entry.title.length <= TITLE_LENGTH_WITH_INLINE_TAG) {
+    return [{ tag: truncateTag(entry.tags[0]), tooltip }];
   }
+
+  return [{ text: `${entry.tags.length} tags`, tooltip }];
+}
+
+function truncateTag(tag: string): string {
+  if (tag.length <= MAX_INLINE_TAG_LENGTH) return tag;
+
+  return `${tag.slice(0, MAX_INLINE_TAG_LENGTH - 1)}…`;
 }
 
 export default function SearchLibraryCommand() {
@@ -52,37 +56,28 @@ export default function SearchLibraryCommand() {
       filtering={false}
       throttle
     >
-      {entries.map((entry) => {
-        const maxTags = getMaxVisibleTags(entry.title, entry.tags.length);
-        const visibleTags = entry.tags.slice(0, maxTags);
-        const hiddenCount = entry.tags.length - maxTags;
-
-        return (
-          <List.Item
-            key={entry.id}
-            title={entry.title}
-            accessories={[
-              ...visibleTags.map((tag) => ({ tag })),
-              ...(hiddenCount > 0 ? [{ text: `+${hiddenCount}` }] : []),
-            ]}
-            icon={iconForType(entry.type)}
-            detail={
-              <List.Item.Detail
-                markdown={renderEntryMarkdown(entry)}
-                metadata={<Metadata entry={entry} />}
-              />
-            }
-            actions={
-              <EntryActions
-                entry={entry}
-                runtimeRegistry={runtimeRegistry}
-                onChanged={revalidate}
-                onReload={revalidate}
-              />
-            }
-          />
-        );
-      })}
+      {entries.map((entry) => (
+        <List.Item
+          key={entry.id}
+          title={entry.title}
+          accessories={buildSearchAccessories(entry)}
+          icon={iconForType(entry.type)}
+          detail={
+            <List.Item.Detail
+              markdown={renderEntryMarkdown(entry)}
+              metadata={<Metadata entry={entry} />}
+            />
+          }
+          actions={
+            <EntryActions
+              entry={entry}
+              runtimeRegistry={runtimeRegistry}
+              onChanged={revalidate}
+              onReload={revalidate}
+            />
+          }
+        />
+      ))}
     </List>
   );
 }
