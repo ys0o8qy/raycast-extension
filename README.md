@@ -65,6 +65,12 @@ The add/edit flow uses one tag picker screen:
 - Type a new tag and press Enter on `Create #tag` to create it.
 - Press Enter on `Save Resource` or `Update Resource` with an empty search box to finish.
 
+## Project Collections
+
+Project-related aggregation should use first-class project collections, not tags renamed as groups. A project can gather a PRD, technical design, test account reference, environment URL, issue, pull request, and notes while still letting each resource keep its own tags.
+
+The detailed design lives at [docs/superpowers/specs/2026-05-20-project-resource-collections-design.md](/Users/nspzoow/Documents/raycast-org-bookmarks/docs/superpowers/specs/2026-05-20-project-resource-collections-design.md).
+
 ## Schema Command Compatibility
 
 General command actions now belong in the runtime manifest. Legacy schema entries can still use `:SCHEMA_COMMAND:` and optional `:SCHEMA_ARGS:` as a compatibility action for `schema` entries.
