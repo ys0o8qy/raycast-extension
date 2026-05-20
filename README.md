@@ -5,6 +5,7 @@ A Raycast extension for saving and using links, images, text snippets, schema en
 ## Commands
 
 - `Search Resources`: search saved resources, preview content, and run the default action.
+- `Search Projects`: search project collections, open a project, and use the resources attached to it.
 - `Browse Tags`: browse resources grouped by tag.
 - `Add Resource`: add a resource from clipboard content, choose its type, and assign tags.
 
@@ -67,7 +68,28 @@ The add/edit flow uses one tag picker screen:
 
 ## Project Collections
 
-Project-related aggregation should use first-class project collections, not tags renamed as groups. A project can gather a PRD, technical design, test account reference, environment URL, issue, pull request, and notes while still letting each resource keep its own tags.
+Project-related aggregation uses first-class project collections, not tags renamed as groups. A project can gather a PRD, technical design, test account reference, environment URL, issue, pull request, and notes while still letting each resource keep its own tags.
+
+Use `Search Projects` to create, find, open, edit, and archive projects. Inside a project, resources are grouped by role, and the normal resource default actions still work. From the project action item, add an existing resource or create a new resource directly into a selected role. From any resource action panel, use `Add to Project`; from a project resource view, use `Remove from Project` to remove only that membership. The canonical resource entry stays in its normal type root.
+
+Projects are stored under a dedicated Org root:
+
+```org
+* Projects
+** Payment Redesign
+:PROPERTIES:
+:PROJECT_ID: proj_payment_redesign
+:STATUS: active
+:OWNER: alice
+:END:
+
+*** PRD
+:PROPERTIES:
+:ENTRY_ID: resource_prd_123
+:ROLE: prd
+:ORDER: 10
+:END:
+```
 
 The detailed design lives at [docs/superpowers/specs/2026-05-20-project-resource-collections-design.md](/Users/nspzoow/Documents/raycast-org-bookmarks/docs/superpowers/specs/2026-05-20-project-resource-collections-design.md).
 
@@ -97,18 +119,24 @@ raycast://extensions/<author>/<extension>/add-entry?context=<URL-encoded JSON>
 
 Supported context fields:
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `content` | string | Required. The resource value (URL, text, path, or `xxx://` schema). |
-| `title` | string | Optional. Required when `autoSave` is `true`. |
-| `type` | string | Optional. Any visible runtime type id (e.g. `link`, `image`, `text`, `schema`, or a manifest-defined type). Falls back to auto-detection when missing or unknown. |
-| `tags` | string[] \| string | Optional. Strings are split on commas/whitespace. Tags are normalized and deduped. |
-| `autoSave` | boolean | Optional. When `true`, save without showing the form. Falls back to the prefilled UI (with a toast) if `title`/`content` are missing. |
+| Field      | Type               | Notes                                                                                                                                                             |
+| ---------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content`  | string             | Required. The resource value (URL, text, path, or `xxx://` schema).                                                                                               |
+| `title`    | string             | Optional. Required when `autoSave` is `true`.                                                                                                                     |
+| `type`     | string             | Optional. Any visible runtime type id (e.g. `link`, `image`, `text`, `schema`, or a manifest-defined type). Falls back to auto-detection when missing or unknown. |
+| `tags`     | string[] \| string | Optional. Strings are split on commas/whitespace. Tags are normalized and deduped.                                                                                |
+| `autoSave` | boolean            | Optional. When `true`, save without showing the form. Falls back to the prefilled UI (with a toast) if `title`/`content` are missing.                             |
 
 Example payload (before URL-encoding):
 
 ```json
-{ "content": "https://example.com", "type": "link", "title": "Example", "tags": ["docs"], "autoSave": true }
+{
+  "content": "https://example.com",
+  "type": "link",
+  "title": "Example",
+  "tags": ["docs"],
+  "autoSave": true
+}
 ```
 
 ## Development
