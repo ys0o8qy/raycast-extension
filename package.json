@@ -16,6 +16,13 @@
       "mode": "view"
     },
     {
+      "name": "search-projects",
+      "title": "Search Projects",
+      "description": "Search project collections and related resources",
+      "icon": "search-projects.png",
+      "mode": "view"
+    },
+    {
       "name": "browse-tags",
       "title": "Browse Tags",
       "description": "Browse saved resources by tag",

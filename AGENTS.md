@@ -8,15 +8,16 @@ Runtime-visible resource types and reusable actions can also be extended through
 
 The project favors tags for lightweight cross-cutting labels. Existing nested Org grouped files are still parsed for compatibility, but new and edited resources are written without user-facing group selection.
 
-Project-related aggregation should be modeled as first-class project collections, not tags renamed as groups. The detailed design lives in `docs/superpowers/specs/2026-05-20-project-resource-collections-design.md`. Until that model is implemented, do not add tag-backed group commands or tag-backed group management actions.
+Project-related aggregation is modeled as first-class project collections, not tags renamed as groups. The detailed design lives in `docs/superpowers/specs/2026-05-20-project-resource-collections-design.md`. Do not add tag-backed group commands or tag-backed group management actions.
 
 ## Commands
 
 - `search-library`: User-facing title `Search Resources`. Main resource search view. Supports tag-aware queries such as `#docs #raycast keyboard`.
+- `search-projects`: User-facing title `Search Projects`. Project collection search and detail view. Supports creating, editing, archiving, opening projects, adding existing resources, creating new resources into a project role, and removing resources from the current project.
 - `browse-tags`: User-facing title `Browse Tags`. Lists visible resources by tag.
 - `add-entry`: User-facing title `Add Resource`. Two-step resource creation flow with clipboard defaults and tag selection. Also accepts a Raycast `launchContext` for deeplink-driven adds (see "Deeplink Add" below).
 
-The removed `browse-groups` command and the later experimental `search-groups` command should not be reintroduced as tag-backed grouping. A future project entry point should use first-class project storage and terminology such as `Search Projects`.
+The removed `browse-groups` command and the later experimental `search-groups` command should not be reintroduced as tag-backed grouping. Project entry points should use first-class project storage and terminology such as `Search Projects`.
 
 ## Data Model
 
@@ -144,12 +145,13 @@ Step 2 collects:
 
 Editing is launched from `src/actions.tsx` via `Action.Push` and refreshes the search view when saved.
 
-Project collection design:
+Project collection flow:
 
-- Project collections are a planned first-class aggregation model for project work such as PRDs, technical docs, test account references, environments, issues, PRs, and notes.
-- Projects should have their own parser/serializer/storage boundary under `src/projects/` when implemented.
-- Project membership should reference resource `:ID:` values and should not mutate resource tags to simulate membership.
-- Project commands should use `Search Projects` / project terminology rather than `Search Groups`.
+- `src/projects/` owns the project parser, serializer, storage boundary, search, and view model.
+- Projects are stored under a dedicated `* Projects` root and use `:PROJECT_ID:` rather than resource `:TYPE:`.
+- Project membership nodes reference resource `:ID:` values through `:ENTRY_ID:` and never mutate resource tags to simulate membership.
+- `src/search-projects.tsx` renders the `Search Projects` command, project detail resource sections, project creation/editing, archive, add-existing-resource, and add-new-resource-into-role flows.
+- `EntryActions` exposes `Add to Project` as a secondary resource action and `Remove from Project` only when called from a project view context.
 
 `src/search-library.tsx` uses `List` with `isShowingDetail` to show a right-side preview. The list view should not show tags or resource type text; tags stay available in the right-side detail metadata. Preview markdown comes from `src/preview.tsx`, which truncates long bodies and escapes embedded triple backticks before rendering code fences.
 
@@ -183,7 +185,7 @@ The generator lives at `scripts/generate-icons.mjs` and uses `sharp` to render f
 Run these before claiming a change is complete:
 
 ```bash
-./node_modules/.bin/tsc tests/resource.test.ts tests/parser-runtime.test.ts tests/config.test.ts tests/runtime.test.ts tests/action-runner.test.ts tests/serializer-runtime.test.ts tests/launch-context.test.ts tests/search-library.test.ts tests/project-design-cleanup.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && NODE_PATH=/Users/nspzoow/Documents/raycast-org-bookmarks/node_modules node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js /tmp/raycast-org-bookmarks-tests/tests/parser-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/config.test.js /tmp/raycast-org-bookmarks-tests/tests/runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/action-runner.test.js /tmp/raycast-org-bookmarks-tests/tests/serializer-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/launch-context.test.js /tmp/raycast-org-bookmarks-tests/tests/search-library.test.js /tmp/raycast-org-bookmarks-tests/tests/project-design-cleanup.test.js
+./node_modules/.bin/tsc tests/resource.test.ts tests/parser-runtime.test.ts tests/config.test.ts tests/runtime.test.ts tests/action-runner.test.ts tests/serializer-runtime.test.ts tests/launch-context.test.ts tests/search-library.test.ts tests/project-design-cleanup.test.ts tests/projects.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && NODE_PATH=/Users/nspzoow/Documents/raycast-org-bookmarks/node_modules node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js /tmp/raycast-org-bookmarks-tests/tests/parser-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/config.test.js /tmp/raycast-org-bookmarks-tests/tests/runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/action-runner.test.js /tmp/raycast-org-bookmarks-tests/tests/serializer-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/launch-context.test.js /tmp/raycast-org-bookmarks-tests/tests/search-library.test.js /tmp/raycast-org-bookmarks-tests/tests/project-design-cleanup.test.js /tmp/raycast-org-bookmarks-tests/tests/projects.test.js
 npm run build
 npm run generate-icons
 ./node_modules/.bin/ray build

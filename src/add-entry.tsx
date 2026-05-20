@@ -24,7 +24,12 @@ import {
   selectVisibleTypeIds,
   tagMatchesSearch,
 } from "./resource";
-import { loadEntries, loadRuntimeRegistry, saveEntry, updateEntry } from "./storage";
+import {
+  loadEntries,
+  loadRuntimeRegistry,
+  saveEntry,
+  updateEntry,
+} from "./storage";
 import {
   assertRuntimeTypeAvailableForUpdate,
   buildRuntimeRegistry,
@@ -69,7 +74,7 @@ export default function AddEntryCommand(
 
 export function ResourceFormFlow(props: {
   entry?: LibraryEntry;
-  onSaved?: () => void;
+  onSaved?: (entryId: string) => void | Promise<void>;
   launchContext?: AddEntryLaunchContext;
 }) {
   const { entry, onSaved, launchContext } = props;
@@ -93,21 +98,17 @@ export function ResourceFormFlow(props: {
         }
       : undefined,
   );
-  const [clipboardDefaults, setClipboardDefaults] = useState<
-    {
-      type: BuiltinEntryType;
-      resource: string;
-    }
-  >({
+  const [clipboardDefaults, setClipboardDefaults] = useState<{
+    type: BuiltinEntryType;
+    resource: string;
+  }>({
     type: "text",
     resource: "",
   });
   const autoSaveTriggeredRef = useRef(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<
     "idle" | "running" | "skipped" | "saved"
-  >(
-    resolvedLaunchContext?.autoSave ? "running" : "idle",
-  );
+  >(resolvedLaunchContext?.autoSave ? "running" : "idle");
 
   useEffect(() => {
     // Skip the clipboard read when an entry is being edited or when the
@@ -139,14 +140,16 @@ export function ResourceFormFlow(props: {
     }
     autoSaveTriggeredRef.current = true;
 
-    void runAutoSave(resolvedLaunchContext, runtimeRegistry).then((result) => {
-      if (result.kind === "saved") {
-        setAutoSaveStatus("saved");
-        onSaved?.();
-      } else {
-        setAutoSaveStatus("skipped");
-      }
-    });
+    void runAutoSave(resolvedLaunchContext, runtimeRegistry).then(
+      async (result) => {
+        if (result.kind === "saved") {
+          setAutoSaveStatus("saved");
+          await onSaved?.(result.entryId);
+        } else {
+          setAutoSaveStatus("skipped");
+        }
+      },
+    );
   }, [resolvedLaunchContext, runtimeRegistry, onSaved]);
 
   if (autoSaveStatus === "running" || autoSaveStatus === "saved") {
@@ -288,7 +291,7 @@ function DetailsStep(props: {
 function TagStep(props: {
   draft: DraftResource;
   entry?: LibraryEntry;
-  onSaved?: () => void;
+  onSaved?: (entryId: string) => void | Promise<void>;
   runtimeRegistry: RuntimeRegistry;
   initialTags?: string[];
 }) {
@@ -347,14 +350,15 @@ function TagStep(props: {
 
     try {
       setIsSaving(true);
+      let savedEntryId = entry?.id ?? "";
       if (entry) {
         await updateEntry(entry.id, input);
         await showHUD("Updated resource");
       } else {
-        await saveEntry(input);
+        savedEntryId = await saveEntry(input);
         await showHUD("Added resource");
       }
-      onSaved?.();
+      await onSaved?.(savedEntryId);
       pop();
     } catch (error) {
       await showToast({
@@ -423,7 +427,10 @@ function TagStep(props: {
       ) : null}
 
       {selectedTags.length > 0 ? (
-        <List.Section title="Selected Tags" subtitle={`${selectedTags.length} selected`}>
+        <List.Section
+          title="Selected Tags"
+          subtitle={`${selectedTags.length} selected`}
+        >
           {selectedTags.map((tag) => (
             <List.Item
               key={tag}
@@ -544,7 +551,7 @@ function buildEntryInput(
 }
 
 type AutoSaveResult =
-  | { kind: "saved" }
+  | { kind: "saved"; entryId: string }
   | { kind: "skipped"; reason: string };
 
 /**
@@ -565,7 +572,8 @@ async function runAutoSave(
     await showToast({
       style: Toast.Style.Failure,
       title: "Cannot auto-save without a title",
-      message: "Provide `title` in the deeplink launch context, or finish in the form.",
+      message:
+        "Provide `title` in the deeplink launch context, or finish in the form.",
     });
     return { kind: "skipped", reason: "missing-title" };
   }
@@ -600,10 +608,10 @@ async function runAutoSave(
   );
 
   try {
-    await saveEntry(input);
+    const entryId = await saveEntry(input);
     await showHUD("Added resource");
     await popToRoot();
-    return { kind: "saved" };
+    return { kind: "saved", entryId };
   } catch (error) {
     await showToast({
       style: Toast.Style.Failure,

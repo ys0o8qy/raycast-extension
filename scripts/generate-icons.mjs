@@ -27,6 +27,15 @@ const icons = {
     <circle cx="302" cy="318" r="58" fill="#38BDF8"/>
     <path d="M346 362L394 410" stroke="#F8FAFC" stroke-width="28" stroke-linecap="round"/>
   `,
+  "search-projects.png": `
+    <rect width="512" height="512" rx="96" fill="#0F3D3E"/>
+    <path d="M102 156C102 136.118 118.118 120 138 120H226L266 160H374C393.882 160 410 176.118 410 196V376C410 395.882 393.882 412 374 412H138C118.118 412 102 395.882 102 376V156Z" fill="#E2FCEF"/>
+    <path d="M132 218H380V370C380 378.837 372.837 386 364 386H148C139.163 386 132 378.837 132 370V218Z" fill="#A7F3D0"/>
+    <path d="M170 270H262" stroke="#0F3D3E" stroke-width="24" stroke-linecap="round"/>
+    <path d="M170 324H234" stroke="#0F3D3E" stroke-width="24" stroke-linecap="round" opacity=".72"/>
+    <circle cx="324" cy="304" r="48" fill="#F59E0B"/>
+    <path d="M360 340L402 382" stroke="#FFF7ED" stroke-width="26" stroke-linecap="round"/>
+  `,
   "browse-tags.png": `
     <rect width="512" height="512" rx="96" fill="#2A2344"/>
     <path d="M106 119C106 101.327 120.327 87 138 87H285C293.487 87 301.627 90.371 307.627 96.373L412.627 201.373C425.124 213.869 425.124 234.131 412.627 246.627L246.627 412.627C234.131 425.124 213.869 425.124 201.373 412.627L96.373 307.627C90.371 301.627 87 293.487 87 285V138C87 120.327 101.327 106 119 106L106 119Z" fill="#F0ABFC"/>

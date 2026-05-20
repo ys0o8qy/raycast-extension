@@ -1,6 +1,6 @@
 import { getPreferenceValues } from "@raycast/api";
 import { promises as fs } from "node:fs";
-import { appendEntryToOrg } from "./org/serializer";
+import { appendEntryToOrg, createEntryInput } from "./org/serializer";
 import { parseOrg, extractLibraryEntries } from "./org/parser";
 import { loadResourceLibraryConfig } from "./config";
 import {
@@ -34,7 +34,7 @@ export async function loadRuntimeRegistry() {
   return buildRuntimeRegistry(config);
 }
 
-export async function saveEntry(input: NewEntryInput): Promise<void> {
+export async function saveEntry(input: NewEntryInput): Promise<string> {
   const path = getOrgFilePath();
   const runtimeRegistry = await loadRuntimeRegistry();
   let existingContent = "";
@@ -45,12 +45,14 @@ export async function saveEntry(input: NewEntryInput): Promise<void> {
     // If the file does not exist yet, write a new normalized Org document.
   }
 
+  const entryInput = createEntryInput(input);
   const updated = appendEntryToOrg(
     existingContent,
-    input,
-    resolveRuntimeStorageInfo(runtimeRegistry, input.type),
+    entryInput,
+    resolveRuntimeStorageInfo(runtimeRegistry, entryInput.type),
   );
   await fs.writeFile(path, updated, "utf8");
+  return entryInput.id;
 }
 
 export async function updateEntry(

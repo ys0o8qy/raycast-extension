@@ -35,6 +35,32 @@ test("package does not expose tag-backed group commands", () => {
   assert.equal(browseTags?.description, "Browse saved resources by tag");
 });
 
+test("package exposes a first-class project search command", () => {
+  const manifest = JSON.parse(
+    readFileSync(join(process.cwd(), "package.json"), "utf8"),
+  ) as {
+    commands: Array<{
+      name: string;
+      title: string;
+      description: string;
+      icon: string;
+      mode: string;
+    }>;
+  };
+
+  const searchProjects = manifest.commands.find(
+    (command) => command.name === "search-projects",
+  );
+
+  assert.equal(searchProjects?.title, "Search Projects");
+  assert.equal(
+    searchProjects?.description,
+    "Search project collections and related resources",
+  );
+  assert.equal(searchProjects?.icon, "search-projects.png");
+  assert.equal(searchProjects?.mode, "view");
+});
+
 test("resource actions no longer expose tag-backed group management", () => {
   const source = readFileSync(join(process.cwd(), "src/actions.tsx"), "utf8");
 

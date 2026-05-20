@@ -8,6 +8,8 @@ Projects are first-class entities. Tags remain lightweight cross-cutting labels.
 
 This replaces the short-lived tag-backed "group" concept. Do not implement projects by renaming tags to groups. Tags cannot carry project status, roles, ordering, ownership, or archive state without becoming an implicit and brittle project database.
 
+Implementation status: the first iteration is shipped through `Search Projects`, `src/projects/`, and secondary `EntryActions` project membership actions. The extension points in this document remain future-facing.
+
 ## Goals
 
 - Provide a dedicated project-first entry point for project work.
@@ -58,7 +60,7 @@ Commands:
 - `Search Resources`: global resource search. Tags work here.
 - `Browse Tags`: tag discovery and cross-cutting exploration. This is not a project browser.
 - `Add Resource`: creates canonical resources and can later attach the new resource to a project.
-- `Search Projects`: future dedicated project entry point. It lists project entities, not tags.
+- `Search Projects`: dedicated project entry point. It lists project entities, not tags.
 - `Add Project`: optional future command if project creation becomes common enough to deserve a top-level entry. Otherwise project creation can start as an action inside `Search Projects`.
 
 Recommended first implementation:
@@ -173,10 +175,13 @@ Keep `src/storage.ts` as the public resource persistence boundary. Project stora
 
 ## Actions
 
-Resource actions can later include:
+Resource actions include:
 
 - `Add to Project`
 - `Remove from Project` when the current view has project context
+
+Resource actions can later add:
+
 - `Change Project Role`
 
 These actions should work through project storage and membership updates. They must not mutate resource tags to simulate project membership.
@@ -188,6 +193,9 @@ Project actions should include:
 - `Add New Resource`
 - `Edit Project`
 - `Archive Project`
+
+Project actions can later add:
+
 - `Copy Project Summary`
 
 The first action in `EntryActions` must remain the runtime-resolved resource default action. Project membership actions are secondary actions.
