@@ -14,31 +14,6 @@ const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
   types: {},
 });
 
-const MAX_INLINE_TAG_LENGTH = 12;
-const TITLE_LENGTH_WITH_INLINE_TAG = 18;
-
-/**
- * Keep the search result row compact so accessories never squeeze or overlap
- * the resource title in Raycast's narrow list layout.
- */
-function buildSearchAccessories(entry: LibraryEntry) {
-  if (entry.tags.length === 0) return [];
-
-  const tooltip = entry.tags.join(", ");
-
-  if (entry.tags.length === 1 && entry.title.length <= TITLE_LENGTH_WITH_INLINE_TAG) {
-    return [{ tag: truncateTag(entry.tags[0]), tooltip }];
-  }
-
-  return [{ text: `${entry.tags.length} tags`, tooltip }];
-}
-
-function truncateTag(tag: string): string {
-  if (tag.length <= MAX_INLINE_TAG_LENGTH) return tag;
-
-  return `${tag.slice(0, MAX_INLINE_TAG_LENGTH - 1)}…`;
-}
-
 export default function SearchLibraryCommand() {
   const { data = [], isLoading, revalidate } = useCachedPromise(loadEntries);
   const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
@@ -60,7 +35,6 @@ export default function SearchLibraryCommand() {
         <List.Item
           key={entry.id}
           title={entry.title}
-          accessories={buildSearchAccessories(entry)}
           icon={iconForType(entry.type)}
           detail={
             <List.Item.Detail

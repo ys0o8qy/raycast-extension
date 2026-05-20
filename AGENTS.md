@@ -142,7 +142,7 @@ Step 2 collects:
 
 Editing is launched from `src/actions.tsx` via `Action.Push` and refreshes the search view when saved.
 
-`src/search-library.tsx` uses `List` with `isShowingDetail` to show a right-side preview. The list view should show tags but not resource type text. Preview markdown comes from `src/preview.tsx`, which truncates long bodies and escapes embedded triple backticks before rendering code fences.
+`src/search-library.tsx` uses `List` with `isShowingDetail` to show a right-side preview. The list view should not show tags or resource type text; tags stay available in the right-side detail metadata. Preview markdown comes from `src/preview.tsx`, which truncates long bodies and escapes embedded triple backticks before rendering code fences.
 
 `src/actions.tsx` renders the primary resource actions from the resolved runtime action list for each entry.
 
@@ -174,7 +174,7 @@ The generator lives at `scripts/generate-icons.mjs` and uses `sharp` to render f
 Run these before claiming a change is complete:
 
 ```bash
-./node_modules/.bin/tsc tests/resource.test.ts tests/parser-runtime.test.ts tests/config.test.ts tests/runtime.test.ts tests/action-runner.test.ts tests/serializer-runtime.test.ts tests/launch-context.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js /tmp/raycast-org-bookmarks-tests/tests/parser-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/config.test.js /tmp/raycast-org-bookmarks-tests/tests/runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/action-runner.test.js /tmp/raycast-org-bookmarks-tests/tests/serializer-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/launch-context.test.js
+./node_modules/.bin/tsc tests/resource.test.ts tests/parser-runtime.test.ts tests/config.test.ts tests/runtime.test.ts tests/action-runner.test.ts tests/serializer-runtime.test.ts tests/launch-context.test.ts tests/search-library.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js /tmp/raycast-org-bookmarks-tests/tests/parser-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/config.test.js /tmp/raycast-org-bookmarks-tests/tests/runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/action-runner.test.js /tmp/raycast-org-bookmarks-tests/tests/serializer-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/launch-context.test.js /tmp/raycast-org-bookmarks-tests/tests/search-library.test.js
 npm run build
 npm run generate-icons
 ./node_modules/.bin/ray build
