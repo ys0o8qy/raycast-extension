@@ -14,3 +14,24 @@ export const PROJECT_ROLE_OPTIONS = [
 export const PROJECT_ROLE_ORDER = PROJECT_ROLE_OPTIONS.map(
   (option) => option.value,
 );
+
+export function filterRoleOptions(
+  searchText: string,
+): Array<{ value: string; title: string }> {
+  const query = searchText.trim().toLowerCase();
+  if (!query) return PROJECT_ROLE_OPTIONS;
+
+  return PROJECT_ROLE_OPTIONS.filter(
+    (option) =>
+      option.title.toLowerCase().includes(query) ||
+      option.value.toLowerCase().includes(query),
+  );
+}
+
+export function isCustomRole(searchText: string): boolean {
+  const query = searchText.trim().toLowerCase();
+  if (!query) return false;
+  return !PROJECT_ROLE_OPTIONS.some(
+    (option) => option.value.toLowerCase() === query,
+  );
+}
