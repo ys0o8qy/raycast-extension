@@ -162,8 +162,8 @@ function ProjectResourcesView(props: { projectId: string }) {
   }
 
   const projectMemberships = data?.memberships ?? [];
-  const entries = data?.entries ?? [];
-  const viewModel = buildProjectViewModel(project, projectMemberships, entries);
+  const allEntries = data?.entries ?? [];
+  const viewModel = buildProjectViewModel(project, projectMemberships, allEntries);
   const nextOrder =
     projectMemberships.filter(
       (membership) => membership.projectId === project.id,
@@ -171,12 +171,27 @@ function ProjectResourcesView(props: { projectId: string }) {
       10 +
     10;
 
+  // IDs of resources already in this project
+  const projectEntryIds = new Set(
+    projectMemberships
+      .filter((membership) => membership.projectId === project.id)
+      .map((membership) => membership.entryId),
+  );
+
+  // Resources NOT in the project, filtered by search
+  const availableEntries = searchText.trim()
+    ? filterEntriesBySearch(
+        allEntries.filter((entry) => !projectEntryIds.has(entry.id)),
+        searchText,
+      )
+    : [];
+
   return (
     <List
       isLoading={isLoading}
       isShowingDetail
       navigationTitle={project.title}
-      searchBarPlaceholder="Search project resources..."
+      searchBarPlaceholder="Search project resources + add new ones..."
       searchText={searchText}
       onSearchTextChange={setSearchText}
       filtering={false}
@@ -235,25 +250,63 @@ function ProjectResourcesView(props: { projectId: string }) {
         </List.Section>
       ) : null}
 
-      {viewModel.sections.length === 0 &&
-      viewModel.missingEntryIds.length === 0 ? (
-        <List.EmptyView
-          title="No resources in this project"
-          description="Add existing resources from the action panel"
-          icon={Icon.Folder}
-          actions={
-            <ProjectResourceListActions
-              project={project}
-              nextOrder={nextOrder}
-              onChanged={revalidate}
+      {/* Resources available to add (not yet in project, matching search) */}
+      {availableEntries.length > 0 ? (
+        <List.Section
+          title="Add to Project"
+          subtitle={`${availableEntries.length} available`}
+        >
+          {availableEntries.map((entry) => (
+            <List.Item
+              key={entry.id}
+              title={entry.title}
+              subtitle={entry.type}
+              icon={iconForType(entry.type)}
+              detail={
+                <List.Item.Detail markdown={renderEntryMarkdown(entry)} />
+              }
+              actions={
+                <ActionPanel>
+                  <Action.Push
+                    title="Add to Project"
+                    icon={Icon.PlusCircle}
+                    target={
+                      <RolePicker
+                        navigationTitle={`Add "${entry.title}"`}
+                        onSelect={async (role) => {
+                          try {
+                            await addProjectMembership(project.id, {
+                              entryId: entry.id,
+                              role,
+                              order: nextOrder,
+                            });
+                            await showHUD("Added to project");
+                            revalidate();
+                          } catch (error) {
+                            await showToast({
+                              style: Toast.Style.Failure,
+                              title: "Failed to add resource",
+                              message: String(error),
+                            });
+                          }
+                        }}
+                      />
+                    }
+                  />
+                </ActionPanel>
+              }
             />
-          }
-        />
+          ))}
+        </List.Section>
       ) : null}
-      {viewModel.sections.length > 0 ? (
-        <List.Item
-          title="Project Actions"
-          icon={Icon.Gear}
+
+      {viewModel.sections.length === 0 &&
+      viewModel.missingEntryIds.length === 0 &&
+      availableEntries.length === 0 ? (
+        <List.EmptyView
+          title={searchText.trim() ? "No matching resources" : "No resources in this project"}
+          description="Type to search all resources and add them to this project"
+          icon={Icon.Folder}
           actions={
             <ProjectResourceListActions
               project={project}
@@ -274,33 +327,8 @@ function ProjectResourceListActions(props: {
 }) {
   const { project, nextOrder, onChanged } = props;
 
-  async function attachCreatedResource(entryId: string, role: string) {
-    try {
-      await addProjectMembership(project.id, {
-        entryId,
-        role,
-        order: nextOrder,
-      });
-      await showHUD("Added to project");
-      onChanged();
-    } catch (error) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to add resource to project",
-        message: String(error),
-      });
-    }
-  }
-
   return (
     <ActionPanel>
-      <Action.Push
-        title="Add Existing Resource"
-        icon={Icon.PlusCircle}
-        target={
-          <ProjectResourcePicker project={project} onChanged={onChanged} />
-        }
-      />
       <Action.Push
         title="Add New Resource as Role"
         icon={Icon.Plus}
@@ -360,89 +388,6 @@ function NewResourceWithRoleFlow(props: {
       navigationTitle="New Resource Role"
       onSelect={setSelectedRole}
     />
-  );
-}
-
-function ProjectResourcePicker(props: {
-  project: Project;
-  onChanged: () => void;
-}) {
-  const { project, onChanged } = props;
-  const { pop } = useNavigation();
-  const { data, isLoading } = useCachedPromise(loadProjectDataWithEntries);
-  const [searchText, setSearchText] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const existingEntryIds = new Set(
-    (data?.memberships ?? [])
-      .filter((membership) => membership.projectId === project.id)
-      .map((membership) => membership.entryId),
-  );
-  const entries = filterEntriesBySearch(
-    (data?.entries ?? []).filter((entry) => !existingEntryIds.has(entry.id)),
-    searchText,
-  );
-
-  async function addEntry(entry: LibraryEntry, role: string) {
-    try {
-      setIsSaving(true);
-      await addProjectMembership(project.id, {
-        entryId: entry.id,
-        role,
-        order: existingEntryIds.size * 10 + 10,
-      });
-      await showHUD("Added to project");
-      onChanged();
-      pop();
-    } catch (error) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to add resource",
-        message: String(error),
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  return (
-    <List
-      isLoading={isLoading || isSaving}
-      searchBarPlaceholder="Search resources to add..."
-      searchText={searchText}
-      onSearchTextChange={setSearchText}
-      filtering={false}
-      throttle
-    >
-      {entries.map((entry) => (
-        <List.Item
-          key={entry.id}
-          title={entry.title}
-          subtitle={entry.type}
-          icon={iconForType(entry.type)}
-          actions={
-            <ActionPanel>
-              <Action.Push
-                title="Add to Project"
-                icon={Icon.PlusCircle}
-                target={
-                  <RolePicker
-                    navigationTitle={`Add "${entry.title}"`}
-                    onSelect={(role) => addEntry(entry, role)}
-                  />
-                }
-              />
-            </ActionPanel>
-          }
-        />
-      ))}
-      {entries.length === 0 ? (
-        <List.EmptyView
-          title="No resources available"
-          description="Create resources first, then add them to this project"
-          icon={Icon.Document}
-        />
-      ) : null}
-    </List>
   );
 }
 
