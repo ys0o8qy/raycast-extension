@@ -178,20 +178,12 @@ function ProjectResourcesView(props: { projectId: string }) {
       .map((membership) => membership.entryId),
   );
 
-  // Resources NOT in the project, filtered by search
-  const availableEntries = searchText.trim()
-    ? filterEntriesBySearch(
-        allEntries.filter((entry) => !projectEntryIds.has(entry.id)),
-        searchText,
-      )
-    : [];
-
   return (
     <List
       isLoading={isLoading}
       isShowingDetail
       navigationTitle={project.title}
-      searchBarPlaceholder="Search project resources + add new ones..."
+      searchBarPlaceholder="Search project resources..."
       searchText={searchText}
       onSearchTextChange={setSearchText}
       filtering={false}
@@ -250,62 +242,11 @@ function ProjectResourcesView(props: { projectId: string }) {
         </List.Section>
       ) : null}
 
-      {/* Resources available to add (not yet in project, matching search) */}
-      {availableEntries.length > 0 ? (
-        <List.Section
-          title="Add to Project"
-          subtitle={`${availableEntries.length} available`}
-        >
-          {availableEntries.map((entry) => (
-            <List.Item
-              key={entry.id}
-              title={entry.title}
-              subtitle={entry.type}
-              icon={iconForType(entry.type)}
-              detail={
-                <List.Item.Detail markdown={renderEntryMarkdown(entry)} />
-              }
-              actions={
-                <ActionPanel>
-                  <Action.Push
-                    title="Add to Project"
-                    icon={Icon.PlusCircle}
-                    target={
-                      <RolePicker
-                        navigationTitle={`Add "${entry.title}"`}
-                        onSelect={async (role) => {
-                          try {
-                            await addProjectMembership(project.id, {
-                              entryId: entry.id,
-                              role,
-                              order: nextOrder,
-                            });
-                            await showHUD("Added to project");
-                            revalidate();
-                          } catch (error) {
-                            await showToast({
-                              style: Toast.Style.Failure,
-                              title: "Failed to add resource",
-                              message: String(error),
-                            });
-                          }
-                        }}
-                      />
-                    }
-                  />
-                </ActionPanel>
-              }
-            />
-          ))}
-        </List.Section>
-      ) : null}
-
       {viewModel.sections.length === 0 &&
-      viewModel.missingEntryIds.length === 0 &&
-      availableEntries.length === 0 ? (
+      viewModel.missingEntryIds.length === 0 ? (
         <List.EmptyView
           title={searchText.trim() ? "No matching resources" : "No resources in this project"}
-          description="Type to search all resources and add them to this project"
+          description="Press ⌘N to add resources"
           icon={Icon.Folder}
           actions={
             <ProjectResourceListActions
@@ -330,7 +271,19 @@ function ProjectResourceListActions(props: {
   return (
     <ActionPanel>
       <Action.Push
-        title="Add New Resource as Role"
+        title="Add Resources…"
+        icon={Icon.PlusCircle}
+        shortcut={{ modifiers: ["cmd"], key: "n" }}
+        target={
+          <AddResourcesToProject
+            project={project}
+            nextOrder={nextOrder}
+            onChanged={onChanged}
+          />
+        }
+      />
+      <Action.Push
+        title="Add New Resource"
         icon={Icon.Plus}
         target={
           <NewResourceWithRoleFlow
@@ -350,8 +303,126 @@ function ProjectResourceListActions(props: {
 }
 
 /**
- * Two-step flow: pick a role → create the resource.
- * Renders RolePicker first, then transitions to ResourceFormFlow with the selected role.
+ * Dedicated resource picker for adding existing resources to a project.
+ * Separated from the main project view so the search bar there only filters
+ * project resources — not a dual-purpose filter+search.
+ */
+function AddResourcesToProject(props: {
+  project: Project;
+  nextOrder: number;
+  onChanged: () => void;
+}) {
+  const { project, nextOrder, onChanged } = props;
+  const { data, isLoading } = useCachedPromise(loadProjectDataWithEntries);
+  const { pop } = useNavigation();
+  const [searchText, setSearchText] = useState("");
+  const [optimisticIds, setOptimisticIds] = useState<Set<string>>(new Set());
+
+  const allEntries = data?.entries ?? [];
+  const projectMemberships = data?.memberships ?? [];
+  const projectEntryIds = new Set(
+    projectMemberships
+      .filter((m) => m.projectId === project.id)
+      .map((m) => m.entryId),
+  );
+
+  const availableEntries = filterEntriesBySearch(
+    allEntries.filter(
+      (entry) =>
+        !projectEntryIds.has(entry.id) && !optimisticIds.has(entry.id),
+    ),
+    searchText,
+  );
+
+  async function addEntry(entry: LibraryEntry, role: string) {
+    // Optimistic: immediately remove from available list
+    setOptimisticIds((prev) => new Set([...prev, entry.id]));
+    try {
+      await addProjectMembership(project.id, {
+        entryId: entry.id,
+        role,
+        order: nextOrder,
+      });
+      await showHUD("Added to project");
+      onChanged();
+      pop();
+    } catch (error) {
+      // Revert optimistic removal on failure
+      setOptimisticIds((prev) => {
+        const next = new Set(prev);
+        next.delete(entry.id);
+        return next;
+      });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to add resource",
+        message: String(error),
+      });
+    }
+  }
+
+  return (
+    <List
+      isLoading={isLoading}
+      isShowingDetail
+      navigationTitle="Add Resources to Project"
+      searchBarPlaceholder="Search resources…"
+      searchText={searchText}
+      onSearchTextChange={setSearchText}
+      filtering={false}
+      throttle
+    >
+      {availableEntries.map((entry) => (
+        <List.Item
+          key={entry.id}
+          title={entry.title}
+          subtitle={entry.type}
+          icon={iconForType(entry.type)}
+          detail={<List.Item.Detail markdown={renderEntryMarkdown(entry)} />}
+          actions={
+            <ActionPanel>
+              <Action
+                title="Add to Project"
+                icon={Icon.PlusCircle}
+                onAction={() => addEntry(entry, "other")}
+              />
+              <Action.Push
+                title="Add with Role…"
+                icon={Icon.Tag}
+                target={
+                  <RolePicker
+                    navigationTitle={`Add "${entry.title}"`}
+                    onSelect={(role) => addEntry(entry, role)}
+                  />
+                }
+              />
+            </ActionPanel>
+          }
+        />
+      ))}
+      {availableEntries.length === 0 ? (
+        <List.EmptyView
+          title={
+            searchText.trim()
+              ? "No matching resources"
+              : "No available resources"
+          }
+          description={
+            searchText.trim()
+              ? "Try a different search"
+              : "All your resources are already in this project"
+          }
+          icon={Icon.Folder}
+        />
+      ) : null}
+    </List>
+  );
+}
+
+/**
+ * Resource creation flow with inline role selection.
+ * Shows ResourceFormFlow directly with a Project Role dropdown;
+ * no separate RolePicker step is needed.
  */
 function NewResourceWithRoleFlow(props: {
   project: Project;
@@ -359,13 +430,13 @@ function NewResourceWithRoleFlow(props: {
   onChanged: () => void;
 }) {
   const { project, nextOrder, onChanged } = props;
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>("other");
 
   async function handleSaved(entryId: string) {
     try {
       await addProjectMembership(project.id, {
         entryId,
-        role: selectedRole!,
+        role: selectedRole,
         order: nextOrder,
       });
       await showHUD("Added to project");
@@ -379,14 +450,11 @@ function NewResourceWithRoleFlow(props: {
     }
   }
 
-  if (selectedRole !== null) {
-    return <ResourceFormFlow onSaved={handleSaved} />;
-  }
-
   return (
-    <RolePicker
-      navigationTitle="New Resource Role"
-      onSelect={setSelectedRole}
+    <ResourceFormFlow
+      onSaved={handleSaved}
+      projectRole={selectedRole}
+      onProjectRoleChange={setSelectedRole}
     />
   );
 }

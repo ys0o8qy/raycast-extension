@@ -47,6 +47,7 @@ import {
   NewEntryInput,
   RuntimeRegistry,
 } from "./types";
+import { PROJECT_ROLE_OPTIONS } from "./projects/roles";
 
 interface ResourceDetailsValues {
   title: string;
@@ -76,8 +77,10 @@ export function ResourceFormFlow(props: {
   entry?: LibraryEntry;
   onSaved?: (entryId: string) => void | Promise<void>;
   launchContext?: AddEntryLaunchContext;
+  projectRole?: string;
+  onProjectRoleChange?: (role: string) => void;
 }) {
-  const { entry, onSaved, launchContext } = props;
+  const { entry, onSaved, launchContext, projectRole, onProjectRoleChange } = props;
   const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
     useCachedPromise(loadRuntimeRegistry);
   const visibleTypeIds = selectVisibleTypeIds([
@@ -178,6 +181,8 @@ export function ResourceFormFlow(props: {
       clipboardDefaults={clipboardDefaults}
       visibleTypeIds={visibleTypeIds}
       onContinue={(nextDraft) => setDraft(nextDraft)}
+      projectRole={projectRole}
+      onProjectRoleChange={onProjectRoleChange}
     />
   );
 }
@@ -190,8 +195,10 @@ function DetailsStep(props: {
   };
   visibleTypeIds: string[];
   onContinue: (draft: DraftResource) => void;
+  projectRole?: string;
+  onProjectRoleChange?: (role: string) => void;
 }) {
-  const { entry, clipboardDefaults, visibleTypeIds, onContinue } = props;
+  const { entry, clipboardDefaults, visibleTypeIds, onContinue, projectRole, onProjectRoleChange } = props;
   const initialResource = entry
     ? entry.properties.URL || entry.properties.PATH || entry.body
     : clipboardDefaults.resource;
@@ -284,6 +291,22 @@ function DetailsStep(props: {
           <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
         ))}
       </Form.Dropdown>
+      {projectRole !== undefined && onProjectRoleChange ? (
+        <Form.Dropdown
+          id="role"
+          title="Project Role"
+          value={projectRole}
+          onChange={onProjectRoleChange}
+        >
+          {PROJECT_ROLE_OPTIONS.map((option) => (
+            <Form.Dropdown.Item
+              key={option.value}
+              value={option.value}
+              title={option.title}
+            />
+          ))}
+        </Form.Dropdown>
+      ) : null}
     </Form>
   );
 }

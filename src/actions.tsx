@@ -200,9 +200,29 @@ function ProjectPicker(props: { entry: LibraryEntry; onChanged?: () => void }) {
           icon={Icon.Folder}
           actions={
             <ActionPanel>
-              <Action.Push
-                title="Add as Role"
+              <Action
+                title="Add to Project"
                 icon={Icon.PlusCircle}
+                onAction={() => addToProject(project, "other")}
+              />
+              <Action
+                title="Add as PRD"
+                icon={Icon.Tag}
+                onAction={() => addToProject(project, "prd")}
+              />
+              <Action
+                title="Add as Technical Docs"
+                icon={Icon.Tag}
+                onAction={() => addToProject(project, "technical-doc")}
+              />
+              <Action
+                title="Add as Design"
+                icon={Icon.Tag}
+                onAction={() => addToProject(project, "design")}
+              />
+              <Action.Push
+                title="Add with Role…"
+                icon={Icon.Tag}
                 target={
                   <RolePicker
                     navigationTitle={`Add "${entry.title}" to "${project.title}"`}
