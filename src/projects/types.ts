@@ -16,12 +16,6 @@ export interface Project {
 export interface ProjectInput {
   id?: string;
   title: string;
-  status?: string;
-  aliases?: string[];
-  owner?: string;
-  dueDate?: string;
-  tags?: string[];
-  notes?: string;
 }
 
 export interface ProjectMembership {

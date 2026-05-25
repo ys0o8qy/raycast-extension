@@ -39,12 +39,6 @@ const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
 
 interface ProjectFormValues {
   title: string;
-  status: string;
-  owner: string;
-  dueDate: string;
-  aliases: string;
-  tags: string;
-  notes: string;
 }
 
 export default function SearchProjectsCommand() {
@@ -53,7 +47,7 @@ export default function SearchProjectsCommand() {
   );
   const [searchText, setSearchText] = useState("");
   const projects = filterProjectsBySearch(
-    (data?.projects ?? []).filter((project) => project.status !== "archived"),
+    data?.projects ?? [],
     searchText,
   );
 
@@ -70,9 +64,7 @@ export default function SearchProjectsCommand() {
         <List.Item
           key={project.id}
           title={project.title}
-          subtitle={projectSubtitle(project)}
           icon={Icon.Folder}
-          accessories={[{ text: project.status }]}
           actions={
             <ProjectListActions project={project} onChanged={revalidate} />
           }
@@ -453,11 +445,11 @@ function ProjectForm(props: { project?: Project; onSaved: () => void }) {
 
   return (
     <Form
-      navigationTitle={project ? "Edit Project" : "Create Project"}
+      navigationTitle={project ? "Rename Project" : "Create Project"}
       actions={
         <ActionPanel>
           <Action.SubmitForm
-            title={project ? "Update Project" : "Create Project"}
+            title={project ? "Rename Project" : "Create Project"}
             icon={Icon.Check}
             onSubmit={handleSubmit}
           />
@@ -470,45 +462,6 @@ function ProjectForm(props: { project?: Project; onSaved: () => void }) {
         placeholder="Payment redesign"
         defaultValue={project?.title ?? ""}
       />
-      <Form.Dropdown
-        id="status"
-        title="Status"
-        defaultValue={project?.status ?? "active"}
-      >
-        {["active", "paused", "done", "archived"].map((status) => (
-          <Form.Dropdown.Item key={status} value={status} title={status} />
-        ))}
-      </Form.Dropdown>
-      <Form.TextField
-        id="owner"
-        title="Owner"
-        placeholder="alice"
-        defaultValue={project?.owner ?? ""}
-      />
-      <Form.TextField
-        id="dueDate"
-        title="Due Date"
-        placeholder="2026-06-15"
-        defaultValue={project?.dueDate ?? ""}
-      />
-      <Form.TextField
-        id="aliases"
-        title="Aliases"
-        placeholder="pay-v2, checkout redesign"
-        defaultValue={project?.aliases.join(", ") ?? ""}
-      />
-      <Form.TextField
-        id="tags"
-        title="Tags"
-        placeholder="payment frontend"
-        defaultValue={project?.tags.join(" ") ?? ""}
-      />
-      <Form.TextArea
-        id="notes"
-        title="Notes"
-        placeholder="Project context, status, and links to external tracking"
-        defaultValue={project?.notes ?? ""}
-      />
     </Form>
   );
 }
@@ -520,33 +473,7 @@ function projectFormValuesToInput(
   return {
     id: projectId,
     title: values.title,
-    status: values.status,
-    owner: values.owner,
-    dueDate: values.dueDate,
-    aliases: splitCommaList(values.aliases),
-    tags: splitTagList(values.tags),
-    notes: values.notes,
   };
-}
-
-function projectSubtitle(project: Project): string {
-  return [project.owner, project.dueDate, project.aliases.join(", ")]
-    .filter(Boolean)
-    .join(" · ");
-}
-
-function splitCommaList(value: string): string[] {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function splitTagList(value: string): string[] {
-  return value
-    .split(/[,\s]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function iconForType(type: LibraryEntry["type"]): Icon {

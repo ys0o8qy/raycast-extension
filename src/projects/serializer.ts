@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { normalizeTags } from "../resource";
 import { parseOrg } from "../org/parser";
 import { displayRole, extractProjectData, normalizeRole } from "./parser";
 import { ProjectInput, ProjectMembershipInput } from "./types";
@@ -65,10 +64,12 @@ export function archiveProjectInOrg(
   projectId: string,
 ): string {
   const project = findProjectOrThrow(content, projectId);
-  return updateProjectInOrg(content, projectId, {
-    ...project,
-    status: "archived",
-  });
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  lines.splice(
+    project.sourceStartLine,
+    project.sourceEndLine - project.sourceStartLine,
+  );
+  return normalizeOrgOutput(lines.join("\n"));
 }
 
 export function appendProjectMembershipToOrg(
@@ -125,13 +126,7 @@ function buildProjectBlock(
 ): string {
   const propertyLines: Array<[string, string | undefined]> = [
     ["PROJECT_ID", input.id],
-    ["STATUS", input.status],
-    ["OWNER", input.owner],
-    ["DUE", input.dueDate],
-    ["ALIASES", input.aliases.join(", ")],
-    ["TAGS", input.tags.join(" ")],
   ];
-  const body = input.notes.trim();
 
   return [
     `** ${input.title.trim()}`,
@@ -140,7 +135,6 @@ function buildProjectBlock(
       .filter(([, value]) => Boolean(value && value.trim()))
       .map(([key, value]) => `:${key}: ${value}`),
     ":END:",
-    ...(body ? [body] : []),
     ...membershipBlocks,
   ].join("\n");
 }
@@ -170,20 +164,9 @@ function normalizeProjectInput(input: ProjectInput): Required<ProjectInput> {
   return {
     id: input.id?.trim() || `proj_${randomUUID()}`,
     title: input.title.trim(),
-    status: input.status?.trim() || "active",
-    aliases: normalizeList(input.aliases ?? []),
-    owner: input.owner?.trim() || "",
-    dueDate: input.dueDate?.trim() || "",
-    tags: normalizeTags(input.tags ?? []),
-    notes: input.notes?.trim() || "",
   };
 }
 
-function normalizeList(values: string[]): string[] {
-  return Array.from(
-    new Set(values.map((value) => value.trim()).filter(Boolean)),
-  ).sort((left, right) => left.localeCompare(right));
-}
 
 function findProjectOrThrow(content: string, projectId: string) {
   const project = extractProjectData(parseOrg(content)).projects.find(
