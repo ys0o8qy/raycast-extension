@@ -17,7 +17,7 @@ import { runAction } from "./action-runner";
 import { resolveEntryActionsState } from "./entry-actions-state";
 import { EntryDetail } from "./preview";
 import { buildRuntimeRegistry } from "./runtime";
-import { PROJECT_ROLE_OPTIONS } from "./projects/roles";
+import { RolePicker } from "./projects/role-picker";
 import { filterProjectsBySearch } from "./projects/search";
 import {
   addProjectMembership,
@@ -200,15 +200,16 @@ function ProjectPicker(props: { entry: LibraryEntry; onChanged?: () => void }) {
           icon={Icon.Folder}
           actions={
             <ActionPanel>
-              <ActionPanel.Submenu title="Add as Role" icon={Icon.PlusCircle}>
-                {PROJECT_ROLE_OPTIONS.map((role) => (
-                  <Action
-                    key={role.value}
-                    title={role.title}
-                    onAction={() => addToProject(project, role.value)}
+              <Action.Push
+                title="Add as Role"
+                icon={Icon.PlusCircle}
+                target={
+                  <RolePicker
+                    navigationTitle={`Add "${entry.title}" to "${project.title}"`}
+                    onSelect={(role) => addToProject(project, role)}
                   />
-                ))}
-              </ActionPanel.Submenu>
+                }
+              />
             </ActionPanel>
           }
         />
