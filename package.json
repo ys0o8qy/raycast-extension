@@ -67,6 +67,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
+    "build:report": "node scripts/build-ui-report.mjs",
     "debug:entry-actions": "node scripts/generate-entry-actions-debug-report.mjs",
     "generate-icons": "node scripts/generate-icons.mjs",
     "lint": "eslint src --ext .ts,.tsx",

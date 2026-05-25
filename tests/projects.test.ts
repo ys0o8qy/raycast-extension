@@ -151,12 +151,6 @@ test("project serializer appends projects and membership nodes under a Projects 
   const withProject = appendProjectToOrg("", {
     id: "proj_payment",
     title: "Payment Redesign",
-    status: "active",
-    aliases: ["pay-v2"],
-    owner: "alice",
-    dueDate: "2026-06-15",
-    tags: ["payment"],
-    notes: "Project notes.",
   });
   const withMembership = appendProjectMembershipToOrg(
     withProject,
@@ -175,9 +169,11 @@ test("project serializer appends projects and membership nodes under a Projects 
   assert.match(withMembership, /^\*\*\* PRD$/m);
   assert.match(withMembership, /^:ENTRY_ID: prd-1$/m);
   assert.match(withMembership, /^:NOTE: Main PRD$/m);
+  // Simplified projects no longer write STATUS, OWNER, ALIASES, DUE, or TAGS
+  assert.doesNotMatch(withMembership, /^:STATUS:/m);
 });
 
-test("project serializer archives projects and removes memberships without deleting resources", () => {
+test("project serializer archives projects by removing the project block and drops memberships", () => {
   const archived = archiveProjectInOrg(PROJECT_ORG, "proj_payment");
   const withoutMembership = removeProjectMembershipFromOrg(
     PROJECT_ORG,
@@ -185,7 +181,8 @@ test("project serializer archives projects and removes memberships without delet
     "tech-1",
   );
 
-  assert.match(archived, /^:STATUS: archived$/m);
+  // Archive removes the project block entirely — no project title, no status
+  assert.doesNotMatch(archived, /Payment Redesign/);
   assert.doesNotMatch(withoutMembership, /^:ENTRY_ID: tech-1$/m);
   assert.match(withoutMembership, /^:ENTRY_ID: prd-1$/m);
 });
