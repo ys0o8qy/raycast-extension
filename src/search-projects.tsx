@@ -19,7 +19,7 @@ import { buildRuntimeRegistry } from "./runtime";
 import { loadRuntimeRegistry } from "./storage";
 import { LibraryEntry } from "./types";
 import { displayRole } from "./projects/parser";
-import { PROJECT_ROLE_OPTIONS } from "./projects/roles";
+import { RolePicker } from "./projects/role-picker";
 import { filterProjectsBySearch } from "./projects/search";
 import {
   addProjectMembership,
@@ -301,27 +301,65 @@ function ProjectResourceListActions(props: {
           <ProjectResourcePicker project={project} onChanged={onChanged} />
         }
       />
-      <ActionPanel.Submenu title="Add New Resource as Role" icon={Icon.Plus}>
-        {PROJECT_ROLE_OPTIONS.map((role) => (
-          <Action.Push
-            key={role.value}
-            title={role.title}
-            target={
-              <ResourceFormFlow
-                onSaved={(entryId) =>
-                  attachCreatedResource(entryId, role.value)
-                }
-              />
-            }
-          />
-        ))}
-      </ActionPanel.Submenu>
       <Action.Push
-        title="Edit Project"
+        title="Add New Resource as Role"
+        icon={Icon.Plus}
+        target={
+          <NewResourceWithRoleFlow
+            project={project}
+            nextOrder={nextOrder}
+            onChanged={onChanged}
+          />
+        }
+      />
+      <Action.Push
+        title="Rename Project"
         icon={Icon.Pencil}
         target={<ProjectForm project={project} onSaved={onChanged} />}
       />
     </ActionPanel>
+  );
+}
+
+/**
+ * Two-step flow: pick a role → create the resource.
+ * Renders RolePicker first, then transitions to ResourceFormFlow with the selected role.
+ */
+function NewResourceWithRoleFlow(props: {
+  project: Project;
+  nextOrder: number;
+  onChanged: () => void;
+}) {
+  const { project, nextOrder, onChanged } = props;
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+
+  async function handleSaved(entryId: string) {
+    try {
+      await addProjectMembership(project.id, {
+        entryId,
+        role: selectedRole!,
+        order: nextOrder,
+      });
+      await showHUD("Added to project");
+      onChanged();
+    } catch (error) {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to add resource to project",
+        message: String(error),
+      });
+    }
+  }
+
+  if (selectedRole !== null) {
+    return <ResourceFormFlow onSaved={handleSaved} />;
+  }
+
+  return (
+    <RolePicker
+      navigationTitle="New Resource Role"
+      onSelect={setSelectedRole}
+    />
   );
 }
 
@@ -383,15 +421,16 @@ function ProjectResourcePicker(props: {
           icon={iconForType(entry.type)}
           actions={
             <ActionPanel>
-              <ActionPanel.Submenu title="Add as Role" icon={Icon.PlusCircle}>
-                {PROJECT_ROLE_OPTIONS.map((role) => (
-                  <Action
-                    key={role.value}
-                    title={role.title}
-                    onAction={() => addEntry(entry, role.value)}
+              <Action.Push
+                title="Add to Project"
+                icon={Icon.PlusCircle}
+                target={
+                  <RolePicker
+                    navigationTitle={`Add "${entry.title}"`}
+                    onSelect={(role) => addEntry(entry, role)}
                   />
-                ))}
-              </ActionPanel.Submenu>
+                }
+              />
             </ActionPanel>
           }
         />
