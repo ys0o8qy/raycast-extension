@@ -119,22 +119,26 @@ function ProjectListActions(props: {
       <Action.Push
         title="Open Project"
         icon={Icon.ArrowRight}
+        shortcut={{ modifiers: ["cmd"], key: "o" }}
         target={<ProjectResourcesView projectId={project.id} />}
       />
       <Action.Push
         title="Create Project"
         icon={Icon.Plus}
+        shortcut={{ modifiers: ["cmd"], key: "n" }}
         target={<ProjectForm onSaved={onChanged} />}
       />
       <Action.Push
         title="Edit Project"
         icon={Icon.Pencil}
+        shortcut={{ modifiers: ["cmd"], key: "e" }}
         target={<ProjectForm project={project} onSaved={onChanged} />}
       />
       <Action
         title="Archive Project"
         icon={Icon.Tray}
         style={Action.Style.Destructive}
+        shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
         onAction={handleArchive}
       />
     </ActionPanel>
@@ -285,6 +289,7 @@ function ProjectResourceListActions(props: {
       <Action.Push
         title="Add New Resource"
         icon={Icon.Plus}
+        shortcut={{ modifiers: ["cmd", "shift"], key: "n" }}
         target={
           <NewResourceWithRoleFlow
             project={project}
@@ -296,6 +301,7 @@ function ProjectResourceListActions(props: {
       <Action.Push
         title="Rename Project"
         icon={Icon.Pencil}
+        shortcut={{ modifiers: ["cmd"], key: "e" }}
         target={<ProjectForm project={project} onSaved={onChanged} />}
       />
     </ActionPanel>
@@ -384,6 +390,7 @@ function AddResourcesToProject(props: {
               <Action
                 title="Add to Project"
                 icon={Icon.PlusCircle}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
                 onAction={() => addEntry(entry, "other")}
               />
               <Action.Push
@@ -503,6 +510,7 @@ function ProjectForm(props: { project?: Project; onSaved: () => void }) {
           <Action.SubmitForm
             title={project ? "Rename Project" : "Create Project"}
             icon={Icon.Check}
+            shortcut={{ modifiers: ["cmd"], key: "return" }}
             onSubmit={handleSubmit}
           />
         </ActionPanel>
