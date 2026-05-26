@@ -12,12 +12,18 @@ const CONTENT_CHAR_LIMIT = 500;
 /** Resources per batch when bulk-tagging. */
 const BATCH_SIZE = 5;
 
-function getModel() {
+function getModel(): AI.Model {
   const preferences = getPreferenceValues<TagSuggestionPreferences>();
-  const modelKey =
-    (preferences.tagSuggestionModel as keyof typeof AI.Model) ||
-    "OpenAI_GPT-5_nano";
-  return AI.Model[modelKey];
+  const raw = (preferences.tagSuggestionModel || "OpenAI_GPT-5_nano").trim();
+
+  // If it's a known preset key, resolve it through the enum
+  if (raw in AI.Model) {
+    return AI.Model[raw as keyof typeof AI.Model];
+  }
+
+  // Custom model string from BYOK provider — cast directly.
+  // At runtime AI.ask() accepts any string; the enum is just a type-level constraint.
+  return raw as AI.Model;
 }
 
 function showAiUnavailableToast(message: string) {
