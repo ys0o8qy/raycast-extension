@@ -68,18 +68,12 @@
     },
     {
       "name": "tagSuggestionModel",
-      "type": "dropdown",
+      "type": "textfield",
       "required": false,
       "title": "Tag Suggestion Model",
-      "description": "AI model for suggesting tags. Requires AI access (Pro or bring-your-own-key).",
+      "description": "AI model for suggesting tags. Use a preset key (OpenAI_GPT-5_nano, Anthropic_Claude_4.5_Haiku, …) or any custom model string supported by your BYOK provider (e.g. claude-sonnet-4-20250514). See AI.Model docs for all presets. Requires Raycast Pro or BYOK AI access.",
       "default": "OpenAI_GPT-5_nano",
-      "data": [
-        { "title": "GPT-5 Nano (fastest)", "value": "OpenAI_GPT-5_nano" },
-        { "title": "GPT-5 Mini", "value": "OpenAI_GPT-5_mini" },
-        { "title": "GPT-4.1 Nano (fast)", "value": "OpenAI_GPT-4.1_nano" },
-        { "title": "GPT-4.1 Mini (balanced)", "value": "OpenAI_GPT-4.1_mini" },
-        { "title": "Claude 4.5 Haiku (fast)", "value": "Anthropic_Claude_4.5_Haiku" }
-      ]
+      "placeholder": "OpenAI_GPT-5_nano or your-model-id"
     }
   ],
   "dependencies": {
