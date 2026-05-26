@@ -131,10 +131,10 @@ export function EntryActions(props: {
       ) : null}
       {url ? <Action.CopyToClipboard title="Copy URL" content={url} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} /> : null}
       {entry ? (
-        <Action.CopyToClipboard title="Copy Title" content={entry.title} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} />
+        <Action.CopyToClipboard title="Copy Title" content={entry.title} shortcut={{ modifiers: ["cmd", "shift"], key: "t" }} />
       ) : null}
       {entry?.body ? (
-        <Action.CopyToClipboard title="Copy Body" content={entry.body} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} />
+        <Action.CopyToClipboard title="Copy Body" content={entry.body} shortcut={{ modifiers: ["cmd", "shift"], key: "b" }} />
       ) : null}
       {onReload ? (
         <Action

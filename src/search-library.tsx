@@ -1,10 +1,11 @@
 import { Icon, List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { EntryActions } from "./actions";
 import { renderEntryMarkdown } from "./preview";
 import { filterEntriesBySearch } from "./resource";
 import { buildRuntimeRegistry } from "./runtime";
+import { loadProjectData } from "./projects/storage";
 import { loadEntries, loadRuntimeRegistry } from "./storage";
 import { LibraryEntry } from "./types";
 
@@ -18,8 +19,25 @@ export default function SearchLibraryCommand() {
   const { data = [], isLoading, revalidate } = useCachedPromise(loadEntries);
   const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
     useCachedPromise(loadRuntimeRegistry);
+  const { data: projectData = { projects: [], memberships: [] } } =
+    useCachedPromise(loadProjectData);
   const [searchText, setSearchText] = useState("");
   const entries = filterEntriesBySearch(data, searchText);
+
+  // Build a map of entry ID → project titles for project context display
+  const entryProjects = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const m of projectData?.memberships ?? []) {
+      const project = projectData?.projects?.find(
+        (p) => p.id === m.projectId && p.status !== "archived",
+      );
+      if (!project) continue;
+      const titles = map.get(m.entryId) ?? [];
+      titles.push(project.title);
+      map.set(m.entryId, titles);
+    }
+    return map;
+  }, [projectData]);
 
   return (
     <List
@@ -39,7 +57,12 @@ export default function SearchLibraryCommand() {
           detail={
             <List.Item.Detail
               markdown={renderEntryMarkdown(entry)}
-              metadata={<Metadata entry={entry} />}
+              metadata={
+                <Metadata
+                  entry={entry}
+                  projects={entryProjects.get(entry.id) ?? []}
+                />
+              }
             />
           }
           actions={
@@ -71,8 +94,8 @@ function iconForType(type: LibraryEntry["type"]): Icon {
   }
 }
 
-function Metadata(props: { entry: LibraryEntry }) {
-  const { entry } = props;
+function Metadata(props: { entry: LibraryEntry; projects: string[] }) {
+  const { entry, projects } = props;
 
   // Display key properties in a structured order
   const url = entry.properties.URL;
@@ -91,13 +114,25 @@ function Metadata(props: { entry: LibraryEntry }) {
 
   return (
     <List.Item.Detail.Metadata>
-      {entry.tags.length > 0 && (
+      {projects.length > 0 ? (
+        <List.Item.Detail.Metadata.TagList title="Projects">
+          {projects.map((name) => (
+            <List.Item.Detail.Metadata.TagList.Item
+              key={name}
+              text={name}
+              color="blue"
+            />
+          ))}
+        </List.Item.Detail.Metadata.TagList>
+      ) : null}
+
+      {entry.tags.length > 0 ? (
         <List.Item.Detail.Metadata.TagList title="Tags">
           {entry.tags.map((tag) => (
             <List.Item.Detail.Metadata.TagList.Item key={tag} text={tag} />
           ))}
         </List.Item.Detail.Metadata.TagList>
-      )}
+      ) : null}
 
       <List.Item.Detail.Metadata.Label title="Type" text={entry.type} />
 
