@@ -1,11 +1,12 @@
 import {
   Action,
   ActionPanel,
+  Alert,
   Clipboard,
+  confirmAlert,
   Form,
   Icon,
   LaunchProps,
-  List,
   popToRoot,
   showHUD,
   showToast,
@@ -50,12 +51,6 @@ import {
 } from "./types";
 import { PROJECT_ROLE_OPTIONS } from "./projects/roles";
 
-interface ResourceDetailsValues {
-  title: string;
-  type: string;
-  resource: string;
-}
-
 interface DraftResource {
   title: string;
   type: string;
@@ -81,67 +76,79 @@ export function ResourceFormFlow(props: {
   projectRole?: string;
   onProjectRoleChange?: (role: string) => void;
 }) {
-  const { entry, onSaved, launchContext, projectRole, onProjectRoleChange } = props;
+  const { entry, onSaved, launchContext, projectRole, onProjectRoleChange } =
+    props;
+  const { pop } = useNavigation();
   const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
     useCachedPromise(loadRuntimeRegistry);
+  const { data: allEntries = [] } = useCachedPromise(loadEntries);
+  const existingTags = getAllTags(allEntries);
   const visibleTypeIds = selectVisibleTypeIds([
     ...getRuntimeTypeIds(runtimeRegistry),
     entry?.type || "",
   ]);
-  // Editing an existing entry never honors a deeplink launch context — that
-  // flow is only used from the top-level Add Resource command.
+  // Editing an existing entry never honors a deeplink launch context
   const resolvedLaunchContext = entry
     ? undefined
     : resolveAddEntryLaunchContext(launchContext, runtimeRegistry);
-  const [draft, setDraft] = useState<DraftResource | undefined>(() =>
-    resolvedLaunchContext
-      ? {
-          title: resolvedLaunchContext.title,
-          type: resolvedLaunchContext.type,
-          resource: resolvedLaunchContext.resource,
-        }
-      : undefined,
-  );
-  const [clipboardDefaults, setClipboardDefaults] = useState<{
-    type: BuiltinEntryType;
-    resource: string;
-  }>({
-    type: "text",
-    resource: "",
-  });
+
+  // ── Auto-save (deeplink) ────────────────────────────────────────
   const autoSaveTriggeredRef = useRef(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<
     "idle" | "running" | "skipped" | "saved"
   >(resolvedLaunchContext?.autoSave ? "running" : "idle");
 
-  useEffect(() => {
-    // Skip the clipboard read when an entry is being edited or when the
-    // deeplink already provided initial values.
-    if (entry || resolvedLaunchContext) {
-      return;
-    }
+  // ── Form state ──────────────────────────────────────────────────
+  const initialResource = entry
+    ? entry.properties.URL || entry.properties.PATH || entry.body
+    : "";
 
+  const [resource, setResource] = useState(initialResource);
+  const [type, setType] = useState(() =>
+    resolveInitialType(entry, "text", visibleTypeIds),
+  );
+  const [isTypeAutoDetected, setIsTypeAutoDetected] = useState(!entry);
+  const [tags, setTags] = useState<string[]>(entry?.tags ?? []);
+
+  // ── Clipboard defaults (new entry only) ─────────────────────────
+  const [clipboardDefaults, setClipboardDefaults] = useState<{
+    type: BuiltinEntryType;
+    resource: string;
+  }>({ type: "text", resource: "" });
+
+  // ── AI tag suggestion state ─────────────────────────────────────
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+
+  // ── Clipboard detection ─────────────────────────────────────────
+  useEffect(() => {
+    if (entry || resolvedLaunchContext) return;
     async function loadClipboard() {
       const content = await Clipboard.read();
-      const resource = content.file || content.text || "";
-      setClipboardDefaults({
-        type: detectResourceType({ text: content.text, file: content.file }),
-        resource,
+      const res = content.file || content.text || "";
+      const detectedType = detectResourceType({
+        text: content.text,
+        file: content.file,
       });
+      setClipboardDefaults({ type: detectedType, resource: res });
+      if (!type || type === "text") {
+        setType(
+          visibleTypeIds.includes(detectedType)
+            ? detectedType
+            : visibleTypeIds[0] ?? "text",
+        );
+      }
+      setResource(res);
+      setIsTypeAutoDetected(true);
     }
-
     loadClipboard().catch(() => {
-      // Clipboard access is a convenience; an empty form is still useful.
+      // Clipboard access is a convenience
     });
   }, [entry, resolvedLaunchContext]);
 
   useEffect(() => {
-    if (!resolvedLaunchContext || !resolvedLaunchContext.autoSave) {
-      return;
-    }
-    if (autoSaveTriggeredRef.current) {
-      return;
-    }
+    if (!resolvedLaunchContext || !resolvedLaunchContext.autoSave) return;
+    if (autoSaveTriggeredRef.current) return;
     autoSaveTriggeredRef.current = true;
 
     void runAutoSave(resolvedLaunchContext, runtimeRegistry).then(
@@ -156,76 +163,79 @@ export function ResourceFormFlow(props: {
     );
   }, [resolvedLaunchContext, runtimeRegistry, onSaved]);
 
-  if (autoSaveStatus === "running" || autoSaveStatus === "saved") {
-    return (
-      <List isLoading navigationTitle="Saving Resource">
-        <List.EmptyView title="Saving resource…" icon={Icon.SaveDocument} />
-      </List>
-    );
-  }
-
-  if (draft) {
-    return (
-      <TagStep
-        draft={draft}
-        entry={entry}
-        onSaved={onSaved}
-        runtimeRegistry={runtimeRegistry}
-        initialTags={resolvedLaunchContext?.tags}
-      />
-    );
-  }
-
-  return (
-    <DetailsStep
-      entry={entry}
-      clipboardDefaults={clipboardDefaults}
-      visibleTypeIds={visibleTypeIds}
-      onContinue={(nextDraft) => setDraft(nextDraft)}
-      projectRole={projectRole}
-      onProjectRoleChange={onProjectRoleChange}
-    />
-  );
-}
-
-function DetailsStep(props: {
-  entry?: LibraryEntry;
-  clipboardDefaults: {
-    type: BuiltinEntryType;
-    resource: string;
-  };
-  visibleTypeIds: string[];
-  onContinue: (draft: DraftResource) => void;
-  projectRole?: string;
-  onProjectRoleChange?: (role: string) => void;
-}) {
-  const { entry, clipboardDefaults, visibleTypeIds, onContinue, projectRole, onProjectRoleChange } = props;
-  const initialResource = entry
-    ? entry.properties.URL || entry.properties.PATH || entry.body
-    : clipboardDefaults.resource;
-  const initialType = resolveInitialType(
-    entry,
-    clipboardDefaults.type,
-    visibleTypeIds,
-  );
-  const [resource, setResource] = useState(initialResource);
-  const [type, setType] = useState(initialType);
-  const [typeWasEdited, setTypeWasEdited] = useState(Boolean(entry));
-
-  useEffect(() => {
-    setResource(initialResource);
-    setType(initialType);
-    setTypeWasEdited(Boolean(entry));
-  }, [entry, initialResource, initialType]);
-
-  useEffect(() => {
-    if (!visibleTypeIds.includes(type)) {
-      setType(initialType);
+  // ── Type detection handlers ─────────────────────────────────────
+  function handleResourceChange(value: string) {
+    setResource(value);
+    if (isTypeAutoDetected) {
+      const detected = detectResourceType({ text: value });
+      if (visibleTypeIds.includes(detected)) {
+        setType(detected);
+      }
     }
-  }, [initialType, type, visibleTypeIds]);
+  }
 
-  async function handleSubmit(values: ResourceDetailsValues) {
-    if (!values.title.trim()) {
+  function handleAutoDetectType() {
+    const detected = detectResourceType({ text: resource });
+    if (visibleTypeIds.includes(detected)) {
+      setType(detected);
+    }
+    setIsTypeAutoDetected(true);
+  }
+
+  function handleTypeChange(newType: string) {
+    setType(newType);
+    setIsTypeAutoDetected(false);
+  }
+
+  // ── AI tag suggestion ───────────────────────────────────────────
+  async function handleSuggestTags() {
+    setIsSuggesting(true);
+    setSuggestedTags([]);
+    try {
+      const suggestions = await suggestTags(
+        resource || "",
+        resource,
+        existingTags,
+      );
+      const newTags = suggestions.filter((t) => !tags.includes(t));
+      setSuggestedTags(newTags);
+      setIsSuggesting(false);
+
+      if (newTags.length > 0) {
+        const tagList = newTags.map((t) => `#${t}`).join(", ");
+        const shouldAdd = await confirmAlert({
+          title: `${newTags.length} Tag${newTags.length > 1 ? "s" : ""} Suggested`,
+          message: tagList,
+          primaryAction: { title: "Add All" },
+          dismissAction: { title: "Skip" },
+        });
+        if (shouldAdd) {
+          setTags((prev) =>
+            normalizeTags([...prev, ...newTags]),
+          );
+        }
+      } else {
+        await showToast({
+          style: Toast.Style.Success,
+          title: "No new tags to suggest",
+          message: "All relevant tags are already selected",
+        });
+      }
+    } catch (error) {
+      setIsSuggesting(false);
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Tag suggestion failed",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // ── Save ────────────────────────────────────────────────────────
+  async function handleSave() {
+    const title = resource.trim();
+
+    if (!title) {
       await showToast({
         style: Toast.Style.Failure,
         title: "Resource name is required",
@@ -233,7 +243,8 @@ function DetailsStep(props: {
       return;
     }
 
-    if (!resource.trim()) {
+    const content = resource.trim();
+    if (!content) {
       await showToast({
         style: Toast.Style.Failure,
         title: "Resource content is required",
@@ -241,147 +252,11 @@ function DetailsStep(props: {
       return;
     }
 
-    onContinue({
-      title: values.title,
-      type,
-      resource,
-    });
-  }
-
-  return (
-    <Form
-      navigationTitle={entry ? "Edit Resource" : "Add Resource"}
-      actions={
-        <ActionPanel>
-          <Action.SubmitForm
-            title="Continue to Tags"
-            icon={Icon.ArrowRight}
-            shortcut={{ modifiers: ["cmd"], key: "return" }}
-            onSubmit={handleSubmit}
-          />
-        </ActionPanel>
-      }
-    >
-      <Form.TextField
-        id="title"
-        title="Resource Name"
-        placeholder="Name this resource"
-        defaultValue={entry?.title || ""}
-      />
-      <Form.TextArea
-        id="resource"
-        title="Resource"
-        placeholder="Text, URL, org-protocol URL, or image path"
-        value={resource}
-        onChange={(value) => {
-          setResource(value);
-          if (!entry && !typeWasEdited) {
-            setType(detectResourceType({ text: value }));
-          }
-        }}
-      />
-      <Form.Dropdown
-        id="type"
-        title="Resource Type"
-        value={type}
-        onChange={(selectedType) => {
-          setType(selectedType);
-          setTypeWasEdited(true);
-        }}
-      >
-        {visibleTypeIds.map((typeId) => (
-          <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
-        ))}
-      </Form.Dropdown>
-      {projectRole !== undefined && onProjectRoleChange ? (
-        <Form.Dropdown
-          id="role"
-          title="Project Role"
-          value={projectRole}
-          onChange={onProjectRoleChange}
-        >
-          {PROJECT_ROLE_OPTIONS.map((option) => (
-            <Form.Dropdown.Item
-              key={option.value}
-              value={option.value}
-              title={option.title}
-            />
-          ))}
-        </Form.Dropdown>
-      ) : null}
-    </Form>
-  );
-}
-
-function TagStep(props: {
-  draft: DraftResource;
-  entry?: LibraryEntry;
-  onSaved?: (entryId: string) => void | Promise<void>;
-  runtimeRegistry: RuntimeRegistry;
-  initialTags?: string[];
-}) {
-  const { draft, entry, onSaved, runtimeRegistry, initialTags } = props;
-  const { pop } = useNavigation();
-  const { data = [], isLoading } = useCachedPromise(loadEntries);
-  const existingTags = getAllTags(data);
-  const [selectedTags, setSelectedTags] = useState<string[]>(() =>
-    normalizeTags(initialTags ?? entry?.tags ?? []),
-  );
-  const [searchText, setSearchText] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSuggesting, setIsSuggesting] = useState(false);
-  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
-
-  // Clear suggestions when draft content changes
-  useEffect(() => {
-    setSuggestedTags([]);
-  }, [draft.resource, draft.title]);
-
-  async function handleSuggestTags() {
-    setIsSuggesting(true);
-    const suggestions = await suggestTags(
-      draft.title,
-      draft.resource,
-      existingTags,
-    );
-    // Filter out already-selected tags
-    const newTags = suggestions.filter(
-      (tag) => !selectedTags.includes(tag),
-    );
-    setSuggestedTags(newTags);
-    setIsSuggesting(false);
-  }
-
-  function acceptSuggested(tag: string) {
-    setSuggestedTags((current) => current.filter((t) => t !== tag));
-    toggleTag(tag);
-  }
-
-  function acceptAllSuggested() {
-    for (const tag of suggestedTags) {
-      toggleTag(tag);
-    }
-    setSuggestedTags([]);
-  }
-
-  const normalizedQuery = normalizeTag(searchText);
-  const visibleExistingTags = existingTags.filter(
-    (tag) =>
-      !selectedTags.includes(tag) && tagMatchesSearch(tag, normalizedQuery),
-  );
-  const canCreateTag = Boolean(
-    normalizedQuery &&
-    !existingTags.includes(normalizedQuery) &&
-    !selectedTags.includes(normalizedQuery),
-  );
-
-  async function handleSave() {
-    const tags = normalizeTags(selectedTags);
-    if (!isRuntimeTypePersistable(draft.type)) {
+    if (!isRuntimeTypePersistable(type)) {
       await showToast({
         style: Toast.Style.Failure,
         title: "This resource type cannot be saved yet",
-        message: `${draft.type} needs serializer support before it can be persisted.`,
+        message: `${type} needs serializer support before it can be persisted.`,
       });
       return;
     }
@@ -402,243 +277,166 @@ function TagStep(props: {
       }
     }
 
-    const semanticType = getRuntimeTypeDefinition(
-      runtimeRegistry,
-      draft.type,
-    ).extends;
-    const input = buildEntryInput(draft, tags, semanticType, draft.type);
+    const semanticType = getRuntimeTypeDefinition(runtimeRegistry, type).extends;
+    const normalizedTags = normalizeTags(tags);
+    const input = buildEntryInput(
+      { title, type, resource: content },
+      normalizedTags,
+      semanticType,
+      type,
+    );
+
+    const savingToast = await showToast({
+      style: Toast.Style.Animated,
+      title: entry ? "Updating resource…" : "Saving resource…",
+    });
 
     try {
-      setIsSaving(true);
       let savedEntryId = entry?.id ?? "";
       if (entry) {
         await updateEntry(entry.id, input);
-        await showHUD("Updated resource");
+        savingToast.style = Toast.Style.Success;
+        savingToast.title = "Resource updated";
       } else {
         savedEntryId = await saveEntry(input);
-        await showHUD("Added resource");
+        savingToast.style = Toast.Style.Success;
+        savingToast.title = "Resource saved";
       }
       await onSaved?.(savedEntryId);
       pop();
     } catch (error) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to save resource",
-        message: String(error),
-      });
-    } finally {
-      setIsSaving(false);
+      savingToast.style = Toast.Style.Failure;
+      savingToast.title = "Failed to save resource";
+      savingToast.message = String(error);
     }
   }
 
-  function toggleTag(tag: string) {
-    setSelectedTags((currentTags) =>
-      currentTags.includes(tag)
-        ? currentTags.filter((currentTag) => currentTag !== tag)
-        : normalizeTags([...currentTags, tag]),
+  // ── Auto-save loading state ─────────────────────────────────────
+  if (autoSaveStatus === "running" || autoSaveStatus === "saved") {
+    return (
+      <Form isLoading navigationTitle="Saving Resource">
+        <Form.Description text="Saving resource…" />
+      </Form>
     );
   }
 
-  function createTag() {
-    if (!canCreateTag) {
-      return;
-    }
+  // ── Build TagPicker items: existing + AI-suggested ──────────────
+  const tagPickerItems = [
+    ...existingTags.map((t) => t),
+    ...suggestedTags.filter((t) => !existingTags.includes(t)),
+  ];
 
-    setSelectedTags((currentTags) =>
-      normalizeTags([...currentTags, normalizedQuery]),
-    );
-    setSearchText("");
-  }
-
-  const saveActionTitle = entry ? "Update Resource" : "Save Resource";
+  const typeLabel = isTypeAutoDetected
+    ? "Resource Type (auto-detected)"
+    : "Resource Type";
 
   return (
-    <List
-      isLoading={isLoading || isSaving || isSuggesting}
-      navigationTitle="Choose Tags"
-      searchBarPlaceholder="Search or create tags..."
-      searchText={searchText}
-      onSearchTextChange={setSearchText}
-      filtering={false}
+    <Form
+      navigationTitle={entry ? "Edit Resource" : "Add Resource"}
       actions={
         <ActionPanel>
+          <Action.SubmitForm
+            title={entry ? "Save Changes" : "Save Resource"}
+            icon={Icon.SaveDocument}
+            shortcut={{ modifiers: ["cmd"], key: "s" }}
+            onSubmit={handleSave}
+          />
           <Action
-            title="Suggest Tags"
-            icon={Icon.Stars}
+            title={isSuggesting ? "Analyzing…" : "Suggest Tags"}
+            icon={isSuggesting ? Icon.CircleProgress : Icon.Stars}
             shortcut={{ modifiers: ["cmd", "shift"], key: "t" }}
             onAction={handleSuggestTags}
           />
           <Action
-            title={saveActionTitle}
-            icon={Icon.Check}
-            shortcut={{ modifiers: ["cmd"], key: "s" }}
-            onAction={handleSave}
+            title="Auto-Detect Type"
+            icon={Icon.MagnifyingGlass}
+            onAction={handleAutoDetectType}
           />
         </ActionPanel>
       }
     >
-      {suggestedTags.length > 0 ? (
-        <List.Section
-          title="Suggested Tags"
-          subtitle={`${suggestedTags.length} suggested`}
-        >
-          <List.Item
-            key="__accept_all__"
-            title="Accept All Suggestions"
-            subtitle={`Add all ${suggestedTags.length} suggested tags`}
-            icon={Icon.Stars}
-            actions={
-              <ActionPanel>
-                <Action
-                  title="Accept All"
-                  icon={Icon.Stars}
-                  onAction={acceptAllSuggested}
-                />
-              </ActionPanel>
-            }
-          />
-          {suggestedTags.map((tag) => (
-            <List.Item
-              key={tag}
-              title={`#${tag}`}
-              subtitle="Click to accept"
-              icon={Icon.Star}
-              actions={
-                <ActionPanel>
-                  <Action
-                    title="Accept Suggestion"
-                    icon={Icon.CheckCircle}
-                    onAction={() => acceptSuggested(tag)}
-                  />
-                  <Action
-                    title="Accept All"
-                    icon={Icon.Stars}
-                    onAction={acceptAllSuggested}
-                  />
-                </ActionPanel>
-              }
-            />
-          ))}
-        </List.Section>
-      ) : null}
-
-      {canCreateTag ? (
-        <List.Section title="Create New Tag">
-          <List.Item
-            title={`#${normalizedQuery}`}
-            subtitle="Press Enter to create and select this tag"
-            icon={Icon.PlusCircle}
-            actions={
-              <ActionPanel>
-                <Action
-                  title="Create and Select Tag"
-                  icon={Icon.Plus}
-                  shortcut={{ modifiers: ["cmd"], key: "n" }}
-                  onAction={createTag}
-                />
-                <Action
-                  title={saveActionTitle}
-                  icon={Icon.Check}
-                  shortcut={{ modifiers: ["cmd"], key: "s" }}
-                  onAction={handleSave}
-                />
-              </ActionPanel>
-            }
-          />
-        </List.Section>
-      ) : null}
-
-      {selectedTags.length > 0 ? (
-        <List.Section
-          title="Selected Tags"
-          subtitle={`${selectedTags.length} selected`}
-        >
-          {selectedTags.map((tag) => (
-            <List.Item
-              key={tag}
-              title={`#${tag}`}
-              icon={Icon.CheckCircle}
-              accessories={[{ text: "✓" }]}
-              actions={
-                <ActionPanel>
-                  <Action
-                    title="Deselect Tag"
-                    icon={Icon.XMarkCircle}
-                    shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
-                    onAction={() => toggleTag(tag)}
-                  />
-                  <Action
-                    title={saveActionTitle}
-                    icon={Icon.Check}
-                    shortcut={{ modifiers: ["cmd"], key: "s" }}
-                    onAction={handleSave}
-                  />
-                </ActionPanel>
-              }
-            />
-          ))}
-        </List.Section>
-      ) : null}
-
-      {visibleExistingTags.length > 0 ? (
-        <List.Section
-          title={normalizedQuery ? "Available Tags" : "All Tags"}
-          subtitle={`${visibleExistingTags.length} available`}
-        >
-          {visibleExistingTags.map((tag) => (
-            <List.Item
-              key={tag}
-              title={`#${tag}`}
-              subtitle="Press Enter to select this tag"
-              icon={Icon.Tag}
-              actions={
-                <ActionPanel>
-                  <Action
-                    title="Select Tag"
-                    icon={Icon.CheckCircle}
-                    onAction={() => toggleTag(tag)}
-                  />
-                  <Action
-                    title={saveActionTitle}
-                    icon={Icon.Check}
-                    shortcut={{ modifiers: ["cmd"], key: "s" }}
-                    onAction={handleSave}
-                  />
-                </ActionPanel>
-              }
-            />
-          ))}
-        </List.Section>
-      ) : null}
-
-      {!canCreateTag && visibleExistingTags.length === 0 ? (
-        <List.EmptyView
-          title={
-            selectedTags.length > 0
-              ? `${selectedTags.length} tag${selectedTags.length === 1 ? "" : "s"} selected`
-              : "No tags yet"
-          }
-          description={
-            selectedTags.length > 0
-              ? `Press Cmd+S to ${entry ? "update" : "save"} resource`
-              : `Start typing to create a new tag, or press Cmd+S to ${entry ? "update" : "save"} without tags`
-          }
-          icon={selectedTags.length > 0 ? Icon.CheckCircle : Icon.Tag}
-          actions={
-            <ActionPanel>
-              <Action
-                title={saveActionTitle}
-                icon={Icon.Check}
-                shortcut={{ modifiers: ["cmd"], key: "s" }}
-                onAction={handleSave}
-              />
-            </ActionPanel>
-          }
+      {autoSaveStatus === "skipped" ? (
+        <Form.Description
+          title="Auto-save skipped"
+          text="Fill in the missing fields below."
         />
       ) : null}
-    </List>
+
+      <Form.TextField
+        id="title"
+        title="Resource Name"
+        placeholder="Name this resource"
+        defaultValue={entry?.title || ""}
+      />
+
+      <Form.TextArea
+        id="resource"
+        title="Resource"
+        placeholder="Text, URL, org-protocol URL, or image path"
+        value={resource}
+        onChange={handleResourceChange}
+      />
+
+      <Form.Dropdown
+        id="type"
+        title={typeLabel}
+        value={type}
+        onChange={handleTypeChange}
+      >
+        {visibleTypeIds.map((typeId) => (
+          <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
+        ))}
+      </Form.Dropdown>
+
+      <Form.TagPicker
+        id="tags"
+        title="Tags"
+        placeholder={
+          isSuggesting
+            ? "Generating suggestions…"
+            : "Search or create tags…"
+        }
+        value={tags}
+        onChange={setTags}
+      >
+        {tagPickerItems.map((tag) => (
+          <Form.TagPicker.Item key={tag} value={tag} title={tag} />
+        ))}
+      </Form.TagPicker>
+
+      {isSuggesting ? (
+        <Form.Description
+          title="AI Suggestions"
+          text="Analyzing resource content…"
+        />
+      ) : suggestedTags.length > 0 ? (
+        <Form.Description
+          title="AI Suggestions Available"
+          text={`${suggestedTags.length} tag${suggestedTags.length > 1 ? "s" : ""} ready. Use the TagPicker to select suggested tags.`}
+        />
+      ) : null}
+
+      {projectRole !== undefined && onProjectRoleChange ? (
+        <Form.Dropdown
+          id="role"
+          title="Project Role"
+          value={projectRole}
+          onChange={onProjectRoleChange}
+        >
+          {PROJECT_ROLE_OPTIONS.map((option) => (
+            <Form.Dropdown.Item
+              key={option.value}
+              value={option.value}
+              title={option.title}
+            />
+          ))}
+        </Form.Dropdown>
+      ) : null}
+    </Form>
   );
 }
+
+// ── Helpers ──────────────────────────────────────────────────────
 
 function resolveInitialType(
   entry: LibraryEntry | undefined,
@@ -648,11 +446,9 @@ function resolveInitialType(
   if (entry?.type && visibleTypeIds.includes(entry.type)) {
     return entry.type;
   }
-
   if (visibleTypeIds.includes(detectedType)) {
     return detectedType;
   }
-
   return visibleTypeIds[0] ?? detectedType;
 }
 
@@ -663,7 +459,6 @@ function buildEntryInput(
   runtimeType: string,
 ): NewEntryInput {
   const resource = draft.resource.trim();
-
   return {
     title: draft.title,
     type: runtimeType,
@@ -673,17 +468,12 @@ function buildEntryInput(
   };
 }
 
+// ── Deeplink auto-save ──────────────────────────────────────────
+
 type AutoSaveResult =
   | { kind: "saved"; entryId: string }
   | { kind: "skipped"; reason: string };
 
-/**
- * Persist a deeplink-launched resource without showing the add-entry UI.
- *
- * Returns `skipped` (with a user-visible toast already shown) when the
- * launch context lacks the fields required to save unattended; the caller
- * should then fall back to the normal two-step UI so the user can finish.
- */
 async function runAutoSave(
   resolved: ResolvedAddEntryLaunchContext,
   runtimeRegistry: RuntimeRegistry,
