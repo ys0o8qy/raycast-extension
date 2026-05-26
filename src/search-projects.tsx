@@ -192,6 +192,13 @@ function ProjectResourcesView(props: { projectId: string }) {
       onSearchTextChange={setSearchText}
       filtering={false}
       throttle
+      actions={
+        <ProjectResourceListActions
+          project={project}
+          nextOrder={nextOrder}
+          onChanged={revalidate}
+        />
+      }
     >
       {viewModel.sections.map((section) => {
         const visibleEntries = section.entries.filter(
