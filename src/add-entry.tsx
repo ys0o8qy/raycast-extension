@@ -41,6 +41,7 @@ import {
   ResolvedAddEntryLaunchContext,
   resolveAddEntryLaunchContext,
 } from "./launch-context";
+import { suggestTags } from "./ai-tag-suggest";
 import {
   BuiltinEntryType,
   LibraryEntry,
@@ -328,6 +329,41 @@ function TagStep(props: {
   );
   const [searchText, setSearchText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+
+  // Clear suggestions when draft content changes
+  useEffect(() => {
+    setSuggestedTags([]);
+  }, [draft.resource, draft.title]);
+
+  async function handleSuggestTags() {
+    setIsSuggesting(true);
+    const suggestions = await suggestTags(
+      draft.title,
+      draft.resource,
+      existingTags,
+    );
+    // Filter out already-selected tags
+    const newTags = suggestions.filter(
+      (tag) => !selectedTags.includes(tag),
+    );
+    setSuggestedTags(newTags);
+    setIsSuggesting(false);
+  }
+
+  function acceptSuggested(tag: string) {
+    setSuggestedTags((current) => current.filter((t) => t !== tag));
+    toggleTag(tag);
+  }
+
+  function acceptAllSuggested() {
+    for (const tag of suggestedTags) {
+      toggleTag(tag);
+    }
+    setSuggestedTags([]);
+  }
+
   const normalizedQuery = normalizeTag(searchText);
   const visibleExistingTags = existingTags.filter(
     (tag) =>
@@ -418,13 +454,74 @@ function TagStep(props: {
 
   return (
     <List
-      isLoading={isLoading || isSaving}
+      isLoading={isLoading || isSaving || isSuggesting}
       navigationTitle="Choose Tags"
       searchBarPlaceholder="Search or create tags..."
       searchText={searchText}
       onSearchTextChange={setSearchText}
       filtering={false}
+      actions={
+        <ActionPanel>
+          <Action
+            title="Suggest Tags"
+            icon={Icon.Stars}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "t" }}
+            onAction={handleSuggestTags}
+          />
+          <Action
+            title={saveActionTitle}
+            icon={Icon.Check}
+            shortcut={{ modifiers: ["cmd"], key: "s" }}
+            onAction={handleSave}
+          />
+        </ActionPanel>
+      }
     >
+      {suggestedTags.length > 0 ? (
+        <List.Section
+          title="Suggested Tags"
+          subtitle={`${suggestedTags.length} suggested`}
+        >
+          <List.Item
+            key="__accept_all__"
+            title="Accept All Suggestions"
+            subtitle={`Add all ${suggestedTags.length} suggested tags`}
+            icon={Icon.Stars}
+            actions={
+              <ActionPanel>
+                <Action
+                  title="Accept All"
+                  icon={Icon.Stars}
+                  onAction={acceptAllSuggested}
+                />
+              </ActionPanel>
+            }
+          />
+          {suggestedTags.map((tag) => (
+            <List.Item
+              key={tag}
+              title={`#${tag}`}
+              subtitle="Click to accept"
+              icon={Icon.Star}
+              actions={
+                <ActionPanel>
+                  <Action
+                    title="Accept Suggestion"
+                    icon={Icon.CheckCircle}
+                    onAction={() => acceptSuggested(tag)}
+                  />
+                  <Action
+                    title="Accept All"
+                    icon={Icon.Stars}
+                    onAction={acceptAllSuggested}
+                  />
+                </ActionPanel>
+              }
+            />
+          ))}
+        </List.Section>
+      ) : null}
+
       {canCreateTag ? (
         <List.Section title="Create New Tag">
           <List.Item
