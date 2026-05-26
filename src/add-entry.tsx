@@ -255,6 +255,7 @@ function DetailsStep(props: {
           <Action.SubmitForm
             title="Continue to Tags"
             icon={Icon.ArrowRight}
+            shortcut={{ modifiers: ["cmd"], key: "return" }}
             onSubmit={handleSubmit}
           />
         </ActionPanel>
@@ -435,6 +436,7 @@ function TagStep(props: {
                 <Action
                   title="Create and Select Tag"
                   icon={Icon.Plus}
+                  shortcut={{ modifiers: ["cmd"], key: "n" }}
                   onAction={createTag}
                 />
                 <Action
@@ -465,6 +467,7 @@ function TagStep(props: {
                   <Action
                     title="Deselect Tag"
                     icon={Icon.XMarkCircle}
+                    shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
                     onAction={() => toggleTag(tag)}
                   />
                   <Action

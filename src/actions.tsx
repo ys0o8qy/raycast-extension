@@ -77,6 +77,7 @@ export function EntryActions(props: {
         <Action.Push
           title="Show Details"
           icon={Icon.AppWindowSidebarLeft}
+          shortcut={{ modifiers: ["cmd"], key: "o" }}
           target={<EntryDetail entry={entry} />}
         />
       ) : null}
@@ -92,6 +93,7 @@ export function EntryActions(props: {
         <Action.Push
           title="Show Details"
           icon={Icon.AppWindowSidebarLeft}
+          shortcut={{ modifiers: ["cmd"], key: "o" }}
           target={<EntryDetail entry={entry} />}
         />
       ) : null}
@@ -107,6 +109,7 @@ export function EntryActions(props: {
         <Action.Push
           title="Add to Project"
           icon={Icon.PlusCircle}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
           target={<ProjectPicker entry={entry} onChanged={onChanged} />}
         />
       ) : null}
@@ -114,6 +117,7 @@ export function EntryActions(props: {
         <Action
           title="Remove from Project"
           icon={Icon.XMarkCircle}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
           onAction={async () => {
             await removeProjectMembership(projectContext.projectId, entry.id);
             await showHUD("Removed from project");
@@ -123,14 +127,14 @@ export function EntryActions(props: {
         />
       ) : null}
       {localPath ? (
-        <Action.CopyToClipboard title="Copy Local Path" content={localPath} />
+        <Action.CopyToClipboard title="Copy Local Path" content={localPath} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} />
       ) : null}
-      {url ? <Action.CopyToClipboard title="Copy URL" content={url} /> : null}
+      {url ? <Action.CopyToClipboard title="Copy URL" content={url} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} /> : null}
       {entry ? (
-        <Action.CopyToClipboard title="Copy Title" content={entry.title} />
+        <Action.CopyToClipboard title="Copy Title" content={entry.title} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} />
       ) : null}
       {entry?.body ? (
-        <Action.CopyToClipboard title="Copy Body" content={entry.body} />
+        <Action.CopyToClipboard title="Copy Body" content={entry.body} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} />
       ) : null}
       {onReload ? (
         <Action
@@ -203,6 +207,7 @@ function ProjectPicker(props: { entry: LibraryEntry; onChanged?: () => void }) {
               <Action
                 title="Add to Project"
                 icon={Icon.PlusCircle}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
                 onAction={() => addToProject(project, "other")}
               />
               <Action
