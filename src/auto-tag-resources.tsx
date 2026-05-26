@@ -10,7 +10,8 @@ import {
 import { useCachedPromise } from "@raycast/utils";
 import { useState } from "react";
 import { suggestTagsBatch } from "./ai-tag-suggest";
-import { log, getRecentLogs } from "./logger";
+import { log } from "./logger";
+import { renderEntryMarkdown } from "./preview";
 import { getAllTags } from "./resource";
 import { loadEntries, updateEntry } from "./storage";
 import { LibraryEntry, NewEntryInput } from "./types";
@@ -264,6 +265,7 @@ function AutoTagFlow(props: {
       <List
         navigationTitle="Review Suggestions"
         searchBarPlaceholder="Filter resources..."
+        isShowingDetail
         filtering
         actions={
           <ActionPanel>
@@ -282,33 +284,44 @@ function AutoTagFlow(props: {
             <List.Item
               key={entry.id}
               title={entry.title}
-              subtitle={entry.type}
+              subtitle={`${tags.length} new tags`}
               icon={iconForType(entry.type)}
-              accessories={[
-                { text: `${tags.length} new tags` },
-              ]}
               detail={
                 <List.Item.Detail
+                  markdown={renderEntryMarkdown(entry)}
                   metadata={
                     <List.Item.Detail.Metadata>
-                      <List.Item.Detail.Metadata.TagList title="Existing Tags">
-                        {entry.tags.map((t) => (
-                          <List.Item.Detail.Metadata.TagList.Item
-                            key={t}
-                            text={t}
-                          />
-                        ))}
-                      </List.Item.Detail.Metadata.TagList>
+                      {entry.tags.length > 0 ? (
+                        <List.Item.Detail.Metadata.TagList title="Existing Tags">
+                          {entry.tags.map((t) => (
+                            <List.Item.Detail.Metadata.TagList.Item
+                              key={t}
+                              text={t}
+                            />
+                          ))}
+                        </List.Item.Detail.Metadata.TagList>
+                      ) : null}
+                      {tags.length > 0 ? (
+                        <List.Item.Detail.Metadata.TagList title="AI Suggested Tags">
+                          {tags.map((t) => (
+                            <List.Item.Detail.Metadata.TagList.Item
+                              key={t}
+                              text={t}
+                              color="yellow"
+                            />
+                          ))}
+                        </List.Item.Detail.Metadata.TagList>
+                      ) : (
+                        <List.Item.Detail.Metadata.Label
+                          title="AI Suggested Tags"
+                          text="(none)"
+                        />
+                      )}
                       <List.Item.Detail.Metadata.Separator />
-                      <List.Item.Detail.Metadata.TagList title="Suggested Tags">
-                        {tags.map((t) => (
-                          <List.Item.Detail.Metadata.TagList.Item
-                            key={t}
-                            text={t}
-                            color="yellow"
-                          />
-                        ))}
-                      </List.Item.Detail.Metadata.TagList>
+                      <List.Item.Detail.Metadata.Label
+                        title="Type"
+                        text={entry.type}
+                      />
                     </List.Item.Detail.Metadata>
                   }
                 />
