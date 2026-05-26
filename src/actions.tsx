@@ -1,7 +1,9 @@
 import {
   Action,
   ActionPanel,
+  Alert,
   Clipboard,
+  confirmAlert,
   Icon,
   List,
   open,
@@ -117,8 +119,18 @@ export function EntryActions(props: {
         <Action
           title="Remove from Project"
           icon={Icon.XMarkCircle}
+          style={Action.Style.Destructive}
           shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
           onAction={async () => {
+            if (
+              !(await confirmAlert({
+                title: "Remove from Project",
+                message: `Remove "${entry.title}" from this project? This cannot be undone.`,
+                primaryAction: { title: "Remove", style: Alert.ActionStyle.Destructive },
+              }))
+            ) {
+              return;
+            }
             await removeProjectMembership(projectContext.projectId, entry.id);
             await showHUD("Removed from project");
             projectContext.onChanged?.();

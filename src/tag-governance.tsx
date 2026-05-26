@@ -1,6 +1,8 @@
 import {
   Action,
   ActionPanel,
+  Alert,
+  confirmAlert,
   Icon,
   List,
   showHUD,
@@ -135,17 +137,35 @@ function TagGovernanceFlow(props: {
   }
 
   async function executeMerges() {
+    // Count affected entries before executing
+    const mergeMap = new Map<string, string>();
+    for (const { from, to } of approvedMerges) {
+      mergeMap.set(from, to);
+    }
+
+    const affectedEntries = entries.filter((entry) =>
+      entry.tags.some((t) => mergeMap.has(t)),
+    );
+    const affectedCount = affectedEntries.length;
+    const mergeCount = approvedMerges.length;
+
+    const confirmed = await confirmAlert({
+      title: `Execute ${mergeCount} Tag Merge${mergeCount > 1 ? "s" : ""}?`,
+      message: `This will modify ${affectedCount} resource${affectedCount > 1 ? "s" : ""}. This action cannot be undone.`,
+      primaryAction: {
+        title: "Execute Merges",
+        style: Alert.ActionStyle.Destructive,
+      },
+    });
+
+    if (!confirmed) return;
+
     setStage("execute");
     log(
       "tag-governance",
       "execute-start",
       `Executing ${approvedMerges.length} tag merges`,
     );
-
-    const mergeMap = new Map<string, string>();
-    for (const { from, to } of approvedMerges) {
-      mergeMap.set(from, to);
-    }
 
     let updated = 0;
     let errors = 0;

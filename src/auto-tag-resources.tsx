@@ -1,18 +1,20 @@
 import {
   Action,
   ActionPanel,
+  Form,
   Icon,
   List,
   showHUD,
   showToast,
   Toast,
+  useNavigation,
 } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useState } from "react";
 import { suggestTagsBatch } from "./ai-tag-suggest";
 import { log } from "./logger";
 import { renderEntryMarkdown } from "./preview";
-import { getAllTags } from "./resource";
+import { getAllTags, normalizeTag } from "./resource";
 import { loadEntries, updateEntry } from "./storage";
 import { LibraryEntry, NewEntryInput } from "./types";
 
@@ -251,8 +253,8 @@ function AutoTagFlow(props: {
     return (
       <List isLoading navigationTitle="Auto-Tag Resources">
         <List.EmptyView
-          title="Analyzing resources…"
-          description={`Processing ${batch.length} resources with AI`}
+          title="Analyzing with AI…"
+          description={`Processing ${batch.length} resource${batch.length > 1 ? "s" : ""}. This may take a few seconds.`}
           icon={Icon.Stars}
         />
       </List>
@@ -336,19 +338,14 @@ function AutoTagFlow(props: {
                       onAction={() => removeTagFromResult(idx, tag)}
                     />
                   ))}
-                  <Action
+                  <Action.Push
                     title="Add Custom Tag…"
                     icon={Icon.Plus}
-                    onAction={() => {
-                      // Raycast doesn't have inline text input in ActionPanel,
-                      // so we add a simplified approach: user types tag name
-                      // via a Toast prompt concept. For now, provide help.
-                      showToast({
-                        style: Toast.Style.Failure,
-                        title: "Custom tags not yet supported in batch preview",
-                        message: "Use the single-resource Suggest Tags for custom additions.",
-                      });
-                    }}
+                    target={
+                      <AddCustomTagForm
+                        onTag={(tag) => addTagToResult(idx, tag)}
+                      />
+                    }
                   />
                   <Action
                     title="Save All Changes"
@@ -416,4 +413,47 @@ function iconForType(type: LibraryEntry["type"]): Icon {
     default:
       return Icon.Document;
   }
+}
+
+/**
+ * A minimal form for adding a single custom tag in the batch preview flow.
+ * Pushed as a sub-view so the user stays within the auto-tagging context.
+ */
+function AddCustomTagForm(props: { onTag: (tag: string) => void }) {
+  const { pop } = useNavigation();
+
+  async function handleSubmit(values: { tag: string }) {
+    const tag = normalizeTag(values.tag || "");
+    if (!tag) {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Tag name is required",
+      });
+      return;
+    }
+    props.onTag(tag);
+    pop();
+  }
+
+  return (
+    <Form
+      navigationTitle="Add Custom Tag"
+      actions={
+        <ActionPanel>
+          <Action.SubmitForm
+            title="Add Tag"
+            icon={Icon.Plus}
+            onSubmit={handleSubmit}
+          />
+        </ActionPanel>
+      }
+    >
+      <Form.TextField
+        id="tag"
+        title="Tag Name"
+        placeholder="Enter tag name"
+        autoFocus
+      />
+    </Form>
+  );
 }
