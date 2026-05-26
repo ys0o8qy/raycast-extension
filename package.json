@@ -35,6 +35,20 @@
       "description": "Add a link, image, text, or schema resource",
       "icon": "add-entry.png",
       "mode": "view"
+    },
+    {
+      "name": "auto-tag-resources",
+      "title": "Auto-Tag Resources",
+      "description": "Batch tag untagged or lightly tagged resources with AI suggestions",
+      "icon": "browse-tags.png",
+      "mode": "view"
+    },
+    {
+      "name": "tag-governance",
+      "title": "Tag Governance",
+      "description": "Analyze tag health, detect synonyms, and merge redundant tags",
+      "icon": "browse-tags.png",
+      "mode": "view"
     }
   ],
   "preferences": [
