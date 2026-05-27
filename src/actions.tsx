@@ -107,7 +107,7 @@ export function EntryActions(props: {
           target={<ResourceFormFlow entry={entry} onSaved={onChanged} />}
         />
       ) : null}
-      {entry ? (
+      {entry && !projectContext ? (
         <Action.Push
           title="Add to Project"
           icon={Icon.PlusCircle}
