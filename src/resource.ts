@@ -149,14 +149,15 @@ export function filterEntriesBySearch(
     return entries;
   }
 
-  return entries.filter((entry) => {
-    const searchableText = buildSearchableText(entry);
-
-    return (
-      entryMatchesTagQueries(entry, parsed.tags) &&
-      parsed.keywords.every((keyword) => searchableText.includes(keyword))
-    );
-  });
+  return entries
+    .filter((entry) => {
+      const searchableText = buildSearchableText(entry);
+      return (
+        entryMatchesTagQueries(entry, parsed.tags) &&
+        parsed.keywords.every((keyword) => searchableText.includes(keyword))
+      );
+    })
+    .sort((a, b) => b.sourceStartLine - a.sourceStartLine);
 }
 
 export function getAllTags(entries: LibraryEntry[]): string[] {
