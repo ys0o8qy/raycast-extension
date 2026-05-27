@@ -107,6 +107,8 @@ export interface LibraryEntry {
   sourceHeadline: string;
   sourceStartLine: number;
   sourceEndLine: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface NewEntryInput {
@@ -121,6 +123,8 @@ export interface NewEntryInput {
   schemaCommand?: string;
   schemaArgs?: string;
   body?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface EntryInput extends NewEntryInput {

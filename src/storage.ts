@@ -27,8 +27,10 @@ export async function readOrgFile(): Promise<string> {
 export async function loadEntries(): Promise<LibraryEntry[]> {
   const content = await readOrgFile();
   const entries = extractLibraryEntries(parseOrg(content));
-  // Sort newest-first: higher sourceStartLine = appended later
-  return entries.sort((a, b) => b.sourceStartLine - a.sourceStartLine);
+  // Sort newest-first by updatedAt timestamp
+  return entries.sort(
+    (a, b) => b.updatedAt.localeCompare(a.updatedAt),
+  );
 }
 
 export async function loadRuntimeRegistry() {
@@ -40,6 +42,7 @@ export async function saveEntry(input: NewEntryInput): Promise<string> {
   const path = getOrgFilePath();
   const runtimeRegistry = await loadRuntimeRegistry();
   let existingContent = "";
+  const now = new Date().toISOString();
 
   try {
     existingContent = await fs.readFile(path, "utf8");
@@ -47,7 +50,11 @@ export async function saveEntry(input: NewEntryInput): Promise<string> {
     // If the file does not exist yet, write a new normalized Org document.
   }
 
-  const entryInput = createEntryInput(input);
+  const entryInput = createEntryInput({
+    ...input,
+    createdAt: input.createdAt || now,
+    updatedAt: input.updatedAt || now,
+  });
   const updated = appendEntryToOrg(
     existingContent,
     entryInput,
@@ -83,12 +90,15 @@ export async function updateEntry(
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trimEnd();
+  const now = new Date().toISOString();
   const updated = appendEntryToOrg(
     withoutEntry,
     {
       ...input,
       id,
       groupPath: [],
+      createdAt: entry.createdAt,
+      updatedAt: now,
     },
     resolveRuntimeStorageInfo(runtimeRegistry, input.type),
   );
