@@ -364,7 +364,7 @@ export function ResourceFormFlow(props: {
           <Action
             title="Add Tag"
             icon={Icon.Plus}
-            shortcut={{ modifiers: ["cmd", "opt"], key: "t" }}
+            shortcut={{ modifiers: ["cmd"], key: "return" }}
             onAction={addNewTag}
           />
           <Action
@@ -408,13 +408,30 @@ export function ResourceFormFlow(props: {
         ))}
       </Form.Dropdown>
 
+      <Form.TextField
+        id="newTag"
+        title="Add a tag…"
+        placeholder={newTagInput ? "⌘↵ to add" : "Type to search or create a tag"}
+        value={newTagInput}
+        onChange={setNewTagInput}
+      />
+
+      {newTagInput.trim() ? (
+        <Form.Description
+          title={
+            buildNewTagHint(newTagInput, existingTags)
+          }
+          text=""
+        />
+      ) : null}
+
       <Form.TagPicker
         id="tags"
         title="Tags"
         placeholder={
-          isSuggesting
-            ? "Generating suggestions…"
-            : "Search or create tags…"
+          tags.length > 0
+            ? `${tags.length} tag${tags.length > 1 ? "s" : ""} selected`
+            : "None selected"
         }
         value={tags}
         onChange={setTags}
@@ -423,14 +440,6 @@ export function ResourceFormFlow(props: {
           <Form.TagPicker.Item key={tag} value={tag} title={tag} />
         ))}
       </Form.TagPicker>
-
-      <Form.TextField
-        id="newTag"
-        title="New Tag"
-        placeholder="Type tag name, then ⌘⌥T to add"
-        value={newTagInput}
-        onChange={setNewTagInput}
-      />
 
       {isSuggesting ? (
         <Form.Description
@@ -561,4 +570,29 @@ async function runAutoSave(
     });
     return { kind: "skipped", reason: "save-failed" };
   }
+}
+
+// ── Inline tag suggestion helper ────────────────────────────────
+
+/**
+ * Build a hint string showing matching existing tags for the given input.
+ * Used as an inline suggestion below the "Add a tag…" text field.
+ */
+function buildNewTagHint(input: string, existingTags: string[]): string {
+  const normalized = normalizeTag(input);
+  if (!normalized) return "";
+
+  const matches = existingTags
+    .filter((tag) => tagMatchesSearch(tag, normalized))
+    .slice(0, 3);
+
+  if (matches.length === 0) {
+    return `Press ⌘↵ to create "#${normalized}"`;
+  }
+
+  const matchList = matches.map((t) => `#${t}`).join(", ");
+  const isExactMatch = matches.some((t) => t === normalized);
+  return isExactMatch
+    ? `Existing: ${matchList}`
+    : `Existing: ${matchList} — or ⌘↵ to create "#${normalized}"`;
 }
