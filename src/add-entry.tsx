@@ -232,8 +232,8 @@ export function ResourceFormFlow(props: {
   }
 
   // ── Save ────────────────────────────────────────────────────────
-  async function handleSave() {
-    const title = resource.trim();
+  async function handleSave(values: { title: string }) {
+    const title = (values.title || "").trim();
 
     if (!title) {
       await showToast({

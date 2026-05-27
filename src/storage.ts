@@ -26,7 +26,9 @@ export async function readOrgFile(): Promise<string> {
 
 export async function loadEntries(): Promise<LibraryEntry[]> {
   const content = await readOrgFile();
-  return extractLibraryEntries(parseOrg(content));
+  const entries = extractLibraryEntries(parseOrg(content));
+  // Sort newest-first: higher sourceStartLine = appended later
+  return entries.sort((a, b) => b.sourceStartLine - a.sourceStartLine);
 }
 
 export async function loadRuntimeRegistry() {
