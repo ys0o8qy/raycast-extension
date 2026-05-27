@@ -228,6 +228,8 @@ function ProjectResourcesView(props: { projectId: string }) {
                     projectContext={{
                       projectId: project.id,
                       onChanged: revalidate,
+                      project,
+                      nextOrder,
                     }}
                   />
                 }
@@ -320,7 +322,7 @@ function ProjectResourceListActions(props: {
  * Separated from the main project view so the search bar there only filters
  * project resources — not a dual-purpose filter+search.
  */
-function AddResourcesToProject(props: {
+export function AddResourcesToProject(props: {
   project: Project;
   nextOrder: number;
   onChanged: () => void;
@@ -438,7 +440,7 @@ function AddResourcesToProject(props: {
  * Shows ResourceFormFlow directly with a Project Role dropdown;
  * no separate RolePicker step is needed.
  */
-function NewResourceWithRoleFlow(props: {
+export function NewResourceWithRoleFlow(props: {
   project: Project;
   nextOrder: number;
   onChanged: () => void;
