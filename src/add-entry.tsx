@@ -120,6 +120,15 @@ export function ResourceFormFlow(props: {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [newTagInput, setNewTagInput] = useState("");
+  const [newTagHint, setNewTagHint] = useState("");
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Cleanup hint timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    };
+  }, []);
 
   // ── Clipboard detection ─────────────────────────────────────────
   useEffect(() => {
@@ -196,6 +205,16 @@ export function ResourceFormFlow(props: {
       normalizeTags([...prev, normalized]),
     );
     setNewTagInput("");
+    setNewTagHint("");
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+  }
+
+  function handleNewTagChange(value: string) {
+    setNewTagInput(value);
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = setTimeout(() => {
+      setNewTagHint(buildNewTagHint(value, existingTags));
+    }, 150);
   }
 
   // ── AI tag suggestion ───────────────────────────────────────────
@@ -413,14 +432,12 @@ export function ResourceFormFlow(props: {
         title="Add a tag…"
         placeholder={newTagInput ? "⌘↵ to add" : "Type to search or create a tag"}
         value={newTagInput}
-        onChange={setNewTagInput}
+        onChange={handleNewTagChange}
       />
 
-      {newTagInput.trim() ? (
+      {newTagHint ? (
         <Form.Description
-          title={
-            buildNewTagHint(newTagInput, existingTags)
-          }
+          title={newTagHint}
           text=""
         />
       ) : null}
