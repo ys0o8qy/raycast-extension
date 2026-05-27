@@ -119,6 +119,7 @@ export function ResourceFormFlow(props: {
   // ── AI tag suggestion state ─────────────────────────────────────
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState("");
 
   // ── Clipboard detection ─────────────────────────────────────────
   useEffect(() => {
@@ -185,6 +186,16 @@ export function ResourceFormFlow(props: {
   function handleTypeChange(newType: string) {
     setType(newType);
     setIsTypeAutoDetected(false);
+  }
+
+  // ── New tag creation ──────────────────────────────────────────
+  function addNewTag() {
+    const normalized = normalizeTag(newTagInput);
+    if (!normalized) return;
+    setTags((prev) =>
+      normalizeTags([...prev, normalized]),
+    );
+    setNewTagInput("");
   }
 
   // ── AI tag suggestion ───────────────────────────────────────────
@@ -320,10 +331,13 @@ export function ResourceFormFlow(props: {
     );
   }
 
-  // ── Build TagPicker items: existing + AI-suggested ──────────────
+  // ── Build TagPicker items: existing + selected + AI-suggested ──
   const tagPickerItems = [
-    ...existingTags.map((t) => t),
-    ...suggestedTags.filter((t) => !existingTags.includes(t)),
+    ...new Set([
+      ...existingTags,
+      ...tags,
+      ...suggestedTags,
+    ]),
   ];
 
   const typeLabel = isTypeAutoDetected
@@ -346,6 +360,12 @@ export function ResourceFormFlow(props: {
             icon={isSuggesting ? Icon.CircleProgress : Icon.Stars}
             shortcut={{ modifiers: ["cmd", "shift"], key: "t" }}
             onAction={handleSuggestTags}
+          />
+          <Action
+            title="Add Tag"
+            icon={Icon.Plus}
+            shortcut={{ modifiers: ["cmd", "opt"], key: "t" }}
+            onAction={addNewTag}
           />
           <Action
             title="Auto-Detect Type"
@@ -403,6 +423,14 @@ export function ResourceFormFlow(props: {
           <Form.TagPicker.Item key={tag} value={tag} title={tag} />
         ))}
       </Form.TagPicker>
+
+      <Form.TextField
+        id="newTag"
+        title="New Tag"
+        placeholder="Type tag name, then ⌘⌥T to add"
+        value={newTagInput}
+        onChange={setNewTagInput}
+      />
 
       {isSuggesting ? (
         <Form.Description
