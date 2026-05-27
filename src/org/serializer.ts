@@ -38,6 +38,8 @@ export function buildEntryBlock(input: EntryInput, level: number): string {
   const properties: Array<[string, string | undefined]> = [
     ["ID", input.id],
     ["TYPE", input.type],
+    ["CREATED", input.createdAt],
+    ["UPDATED", input.updatedAt],
     ["URL", input.url],
     ["PATH", input.path],
     ["SCHEMA_KIND", input.schemaKind],

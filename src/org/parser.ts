@@ -140,6 +140,19 @@ function normalizeProperties(
   return normalized;
 }
 
+const FALLBACK_TIMESTAMP = "1970-01-01T00:00:00.000Z";
+
+function extractTimestamp(
+  properties: Record<string, string>,
+  key: string,
+): string {
+  const raw = properties[key]?.trim();
+  if (!raw) return FALLBACK_TIMESTAMP;
+  // Validate ISO format; fall back if unparseable
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? raw : FALLBACK_TIMESTAMP;
+}
+
 function nodeToEntry(
   node: OrgNode,
   ancestors: OrgNode[],
@@ -174,6 +187,8 @@ function nodeToEntry(
     sourceHeadline: `${"*".repeat(node.level)} ${node.title}`,
     sourceStartLine: node.sourceStartLine,
     sourceEndLine: node.sourceEndLine,
+    createdAt: extractTimestamp(properties, "CREATED"),
+    updatedAt: extractTimestamp(properties, "UPDATED"),
   };
 }
 

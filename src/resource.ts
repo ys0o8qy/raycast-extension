@@ -157,7 +157,7 @@ export function filterEntriesBySearch(
         parsed.keywords.every((keyword) => searchableText.includes(keyword))
       );
     })
-    .sort((a, b) => b.sourceStartLine - a.sourceStartLine);
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export function getAllTags(entries: LibraryEntry[]): string[] {
