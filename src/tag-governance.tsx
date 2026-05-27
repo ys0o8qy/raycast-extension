@@ -240,6 +240,16 @@ function TagGovernanceFlow(props: {
                 title={`#${s.tag}`}
                 subtitle={`${s.count} resource${s.count === 1 ? "" : "s"}`}
                 icon={Icon.Warning}
+                actions={
+                  <ActionPanel>
+                    <Action
+                      title="Detect Synonyms"
+                      icon={Icon.MagnifyingGlass}
+                      shortcut={{ modifiers: ["cmd"], key: "return" }}
+                      onAction={detectSynonyms}
+                    />
+                  </ActionPanel>
+                }
               />
             ))}
           </List.Section>
@@ -256,6 +266,16 @@ function TagGovernanceFlow(props: {
                 title={`#${s.tag}`}
                 subtitle={`${s.count} resources`}
                 icon={Icon.List}
+                actions={
+                  <ActionPanel>
+                    <Action
+                      title="Detect Synonyms"
+                      icon={Icon.MagnifyingGlass}
+                      shortcut={{ modifiers: ["cmd"], key: "return" }}
+                      onAction={detectSynonyms}
+                    />
+                  </ActionPanel>
+                }
               />
             ))}
           </List.Section>
@@ -277,6 +297,16 @@ function TagGovernanceFlow(props: {
                     : s.isBroad
                       ? Icon.List
                       : Icon.Tag
+                }
+                actions={
+                  <ActionPanel>
+                    <Action
+                      title="Detect Synonyms"
+                      icon={Icon.MagnifyingGlass}
+                      shortcut={{ modifiers: ["cmd"], key: "return" }}
+                      onAction={detectSynonyms}
+                    />
+                  </ActionPanel>
                 }
               />
             ))}

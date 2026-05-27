@@ -105,6 +105,14 @@ export function EntryActions(props: {
           target={<EntryDetail entry={entry} />}
         />
       ) : null}
+      {!projectContext ? (
+        <Action.Push
+          title="Add Resource"
+          icon={Icon.Plus}
+          shortcut={{ modifiers: ["cmd"], key: "n" }}
+          target={<ResourceFormFlow />}
+        />
+      ) : null}
       {entry ? (
         <Action.Push
           title="Edit Resource"
