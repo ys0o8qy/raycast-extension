@@ -28,6 +28,10 @@ import {
 } from "./projects/storage";
 import { Project } from "./projects/types";
 import { LibraryEntry, ResolvedAction, RuntimeRegistry } from "./types";
+import {
+  AddResourcesToProject,
+  NewResourceWithRoleFlow,
+} from "./search-projects";
 
 const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
   version: 1,
@@ -43,6 +47,8 @@ export function EntryActions(props: {
   projectContext?: {
     projectId: string;
     onChanged?: () => void;
+    project?: Project;
+    nextOrder?: number;
   };
 }) {
   const { entry, runtimeRegistry, onChanged, onReload, projectContext } =
@@ -137,6 +143,34 @@ export function EntryActions(props: {
             onChanged?.();
           }}
         />
+      ) : null}
+      {projectContext?.project && projectContext.nextOrder !== undefined ? (
+        <>
+          <Action.Push
+            title="Add Resources…"
+            icon={Icon.PlusCircle}
+            shortcut={{ modifiers: ["cmd"], key: "n" }}
+            target={
+              <AddResourcesToProject
+                project={projectContext.project}
+                nextOrder={projectContext.nextOrder}
+                onChanged={projectContext.onChanged ?? (() => {})}
+              />
+            }
+          />
+          <Action.Push
+            title="Add New Resource"
+            icon={Icon.Plus}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "n" }}
+            target={
+              <NewResourceWithRoleFlow
+                project={projectContext.project}
+                nextOrder={projectContext.nextOrder}
+                onChanged={projectContext.onChanged ?? (() => {})}
+              />
+            }
+          />
+        </>
       ) : null}
       {localPath ? (
         <Action.CopyToClipboard title="Copy Local Path" content={localPath} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} />
