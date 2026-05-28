@@ -6,7 +6,6 @@ import {
   confirmAlert,
   Form,
   Icon,
-  Keyboard,
   LaunchProps,
   popToRoot,
   showHUD,
@@ -24,7 +23,6 @@ import {
   normalizeTag,
   normalizeTags,
   selectVisibleTypeIds,
-  tagMatchesSearch,
 } from "./resource";
 import {
   loadEntries,
@@ -120,10 +118,8 @@ export function ResourceFormFlow(props: {
     resource: string;
   }>({ type: "text", resource: "" });
 
-  // ── Tag input state ─────────────────────────────────────────────
-  const [tagSearchInput, setTagSearchInput] = useState("");
-  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
-  const suggestionTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  // ── New-tag input state ─────────────────────────────────────────
+  const [newTagInput, setNewTagInput] = useState("");
 
   // ── AI tag suggestion state ─────────────────────────────────────
   const [isSuggesting, setIsSuggesting] = useState(false);
@@ -154,13 +150,6 @@ export function ResourceFormFlow(props: {
       // Clipboard access is a convenience
     });
   }, [entry, resolvedLaunchContext]);
-
-  // Cleanup suggestion timer on unmount
-  useEffect(() => {
-    return () => {
-      if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     if (!resolvedLaunchContext || !resolvedLaunchContext.autoSave) return;
@@ -203,10 +192,16 @@ export function ResourceFormFlow(props: {
     setIsTypeAutoDetected(false);
   }
 
-  // ── Tag input (comma-separated with search-as-you-type) ────────
-  function handleTagInputChange(value: string) {
+  // ── TagPicker: only select from existing tags, cannot create ────
+  function handleTagPickerChange(values: string[]) {
+    // Reject any value not in the existing tags list
+    const validTags = values.filter((tag) => existingTags.includes(tag));
+    setTags(validTags);
+  }
+
+  // ── New-tag TextField: comma creates tags, feeds into TagPicker ─
+  function handleNewTagInputChange(value: string) {
     if (value.includes(",")) {
-      // Comma pressed — add all segments before commas as new tags
       const segments = value
         .split(",")
         .map((s) => normalizeTag(s))
@@ -215,37 +210,10 @@ export function ResourceFormFlow(props: {
       if (newTags.length > 0) {
         setTags((prev) => normalizeTags([...prev, ...newTags]));
       }
-      setTagSearchInput("");
-      setTagSuggestions([]);
-      if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
+      setNewTagInput("");
       return;
     }
-    setTagSearchInput(value);
-
-    // Debounced search: show matching existing tags as suggestions
-    if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
-    const normalized = normalizeTag(value);
-    if (normalized) {
-      suggestionTimerRef.current = setTimeout(() => {
-        const matches = existingTags
-          .filter(
-            (tag) =>
-              tagMatchesSearch(tag, normalized) && !tags.includes(tag),
-          )
-          .slice(0, 5);
-        setTagSuggestions(matches);
-      }, 100);
-    } else {
-      setTagSuggestions([]);
-    }
-  }
-
-  function addSuggestedTag(tag: string) {
-    if (!tags.includes(tag)) {
-      setTags((prev) => normalizeTags([...prev, tag]));
-    }
-    setTagSearchInput("");
-    setTagSuggestions([]);
+    setNewTagInput(value);
   }
 
   // ── AI tag suggestion ───────────────────────────────────────────
@@ -388,16 +356,6 @@ export function ResourceFormFlow(props: {
       navigationTitle={entry ? "Edit Resource" : "Add Resource"}
       actions={
         <ActionPanel>
-          {tagSuggestions.length > 0 ? (
-            <Action
-              title={`Add "#${tagSuggestions[0]}"`}
-              icon={Icon.ArrowRight}
-              shortcut={
-                { modifiers: [], key: "return" as Keyboard.KeyEquivalent }
-              }
-              onAction={() => addSuggestedTag(tagSuggestions[0])}
-            />
-          ) : null}
           <Action.SubmitForm
             title={entry ? "Save Changes" : "Save Resource"}
             icon={Icon.SaveDocument}
@@ -415,26 +373,6 @@ export function ResourceFormFlow(props: {
             icon={Icon.MagnifyingGlass}
             onAction={handleAutoDetectType}
           />
-          {tagSuggestions.length > 1 ? (
-            <ActionPanel.Section title="More Matching Tags">
-              {tagSuggestions.slice(1).map((tag, i) => (
-                <Action
-                  key={tag}
-                  title={`Add "#${tag}"`}
-                  icon={Icon.Tag}
-                  shortcut={
-                    i < 8
-                      ? {
-                          modifiers: ["cmd"],
-                          key: String(i + 2) as Keyboard.KeyEquivalent,
-                        }
-                      : undefined
-                  }
-                  onAction={() => addSuggestedTag(tag)}
-                />
-              ))}
-            </ActionPanel.Section>
-          ) : null}
         </ActionPanel>
       }
     >
@@ -471,41 +409,25 @@ export function ResourceFormFlow(props: {
         ))}
       </Form.Dropdown>
 
-      {/* ── Tag input ────────────────────────────────────────────── */}
-      <Form.Description
-        title={
-          tags.length > 0
-            ? tags.map((t) => `#${t}`).join("  ")
-            : "No tags yet"
-        }
-        text={tags.length > 0 ? "" : 'Type a tag name and press "," to add'}
-      />
+      {/* ── Tags: TagPicker (select existing) + TextField (create new) ─ */}
+      <Form.TagPicker
+        id="tags"
+        title="Tags"
+        value={tags}
+        onChange={handleTagPickerChange}
+      >
+        {existingTags.map((tag) => (
+          <Form.TagPicker.Item key={tag} value={tag} title={tag} />
+        ))}
+      </Form.TagPicker>
 
       <Form.TextField
-        id="tagInput"
-        title="Add a tag…"
-        placeholder={
-          tagSuggestions.length > 0
-            ? `↵ to add "#${tagSuggestions[0]}", "," to create`
-            : tags.length > 0
-              ? '"," to add another'
-              : 'Type a tag, press "," to add'
-        }
-        value={tagSearchInput}
-        onChange={handleTagInputChange}
+        id="newTag"
+        title="New Tag"
+        placeholder='Type and press "," to add'
+        value={newTagInput}
+        onChange={handleNewTagInputChange}
       />
-
-      {tagSearchInput ? (
-        <Form.Description
-          title={buildTagSuggestions(
-            tagSearchInput,
-            existingTags,
-            tags,
-            5,
-          )}
-          text=""
-        />
-      ) : null}
 
       {isSuggesting ? (
         <Form.Description
@@ -515,7 +437,7 @@ export function ResourceFormFlow(props: {
       ) : suggestedTags.length > 0 ? (
         <Form.Description
           title="AI Suggestions Available"
-          text={`${suggestedTags.length} tag${suggestedTags.length > 1 ? "s" : ""} ready. Type "," to add suggested tags.`}
+          text={`${suggestedTags.length} tag${suggestedTags.length > 1 ? "s" : ""} ready.`}
         />
       ) : null}
 
@@ -569,45 +491,6 @@ function buildEntryInput(
     tags,
     ...mapResourceInputToEntryFields(semanticType, resource),
   };
-}
-
-/**
- * Build a hint string showing matching existing tags for the given input.
- * Filters out already-selected tags. Shows keyboard shortcuts for matches.
- */
-function buildTagSuggestions(
-  input: string,
-  existingTags: string[],
-  selectedTags: string[],
-  maxResults: number,
-): string {
-  const normalized = normalizeTag(input);
-  if (!normalized) return "";
-
-  const matches = existingTags
-    .filter(
-      (tag) =>
-        tagMatchesSearch(tag, normalized) && !selectedTags.includes(tag),
-    )
-    .slice(0, maxResults);
-
-  if (matches.length === 0) {
-    return `Press "," to create "#${normalized}"`;
-  }
-
-  const matchList =
-    `↵ #${matches[0]}` +
-    (matches.length > 1
-      ? " · " +
-        matches
-          .slice(1)
-          .map((t, i) => `⌘${i + 2} #${t}`)
-          .join(" · ")
-      : "");
-  const isExactMatch = matches.some((t) => t === normalized);
-  return isExactMatch
-    ? `${matchList} · "," to create`
-    : `${matchList} — or "," to create "#${normalized}"`;
 }
 
 // ── Deeplink auto-save ──────────────────────────────────────────
