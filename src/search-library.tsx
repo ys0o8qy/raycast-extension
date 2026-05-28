@@ -1,7 +1,8 @@
-import { Icon, List } from "@raycast/api";
+import { List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { EntryActions } from "./actions";
+import { buildSubtitle, buildTagAccessories, iconForType } from "./list-helpers";
 import { renderEntryMarkdown } from "./preview";
 import { filterEntriesBySearch } from "./resource";
 import { buildRuntimeRegistry } from "./runtime";
@@ -54,6 +55,8 @@ export default function SearchLibraryCommand() {
           key={entry.id}
           title={entry.title}
           icon={iconForType(entry.type)}
+          subtitle={buildSubtitle(entry)}
+          accessories={buildTagAccessories(entry.tags)}
           detail={
             <List.Item.Detail
               markdown={renderEntryMarkdown(entry)}
@@ -79,30 +82,15 @@ export default function SearchLibraryCommand() {
   );
 }
 
-function iconForType(type: LibraryEntry["type"]): Icon {
-  switch (type) {
-    case "link":
-      return Icon.Link;
-    case "image":
-      return Icon.Image;
-    case "text":
-      return Icon.Document;
-    case "schema":
-      return Icon.Code;
-    default:
-      return Icon.Document;
-  }
-}
+// ── Metadata ─────────────────────────────────────────────────────
 
 function Metadata(props: { entry: LibraryEntry; projects: string[] }) {
   const { entry, projects } = props;
 
-  // Display key properties in a structured order
   const url = entry.properties.URL;
   const path = entry.properties.PATH;
   const schemaKind = entry.properties.SCHEMA_KIND;
 
-  // Get remaining properties excluding well-known ones
   const otherProperties = Object.entries(entry.properties).filter(
     ([key]) =>
       key !== "FORMAT" &&
@@ -129,7 +117,10 @@ function Metadata(props: { entry: LibraryEntry; projects: string[] }) {
       {entry.tags.length > 0 ? (
         <List.Item.Detail.Metadata.TagList title="Tags">
           {entry.tags.map((tag) => (
-            <List.Item.Detail.Metadata.TagList.Item key={tag} text={tag} />
+            <List.Item.Detail.Metadata.TagList.Item
+              key={tag}
+              text={tag}
+            />
           ))}
         </List.Item.Detail.Metadata.TagList>
       ) : null}
@@ -149,7 +140,10 @@ function Metadata(props: { entry: LibraryEntry; projects: string[] }) {
       )}
 
       {schemaKind && (
-        <List.Item.Detail.Metadata.Label title="Schema Kind" text={schemaKind} />
+        <List.Item.Detail.Metadata.Label
+          title="Schema Kind"
+          text={schemaKind}
+        />
       )}
 
       {otherProperties.map(([key, value]) => (

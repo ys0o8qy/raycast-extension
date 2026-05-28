@@ -18,6 +18,7 @@ import { filterEntriesBySearch } from "./resource";
 import { buildRuntimeRegistry } from "./runtime";
 import { loadRuntimeRegistry } from "./storage";
 import { LibraryEntry } from "./types";
+import { buildSubtitle, buildTagAccessories, iconForType } from "./list-helpers";
 import { displayRole } from "./projects/parser";
 import { RolePicker } from "./projects/role-picker";
 import { filterProjectsBySearch } from "./projects/search";
@@ -215,8 +216,9 @@ function ProjectResourcesView(props: { projectId: string }) {
               <List.Item
                 key={`${membership.projectId}:${membership.entryId}`}
                 title={membership.titleOverride || entry.title}
-                subtitle={entry.type}
                 icon={iconForType(entry.type)}
+                subtitle={buildSubtitle(entry)}
+                accessories={buildTagAccessories(entry.tags)}
                 detail={
                   <List.Item.Detail markdown={renderEntryMarkdown(entry)} />
                 }
@@ -391,8 +393,9 @@ export function AddResourcesToProject(props: {
         <List.Item
           key={entry.id}
           title={entry.title}
-          subtitle={entry.type}
           icon={iconForType(entry.type)}
+          subtitle={buildSubtitle(entry)}
+          accessories={buildTagAccessories(entry.tags)}
           detail={<List.Item.Detail markdown={renderEntryMarkdown(entry)} />}
           actions={
             <ActionPanel>
@@ -543,19 +546,4 @@ function projectFormValuesToInput(
     id: projectId,
     title: values.title,
   };
-}
-
-function iconForType(type: LibraryEntry["type"]): Icon {
-  switch (type) {
-    case "link":
-      return Icon.Link;
-    case "image":
-      return Icon.Image;
-    case "text":
-      return Icon.Document;
-    case "schema":
-      return Icon.Code;
-    default:
-      return Icon.Document;
-  }
 }

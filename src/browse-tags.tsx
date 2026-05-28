@@ -1,6 +1,7 @@
 import { List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { EntryActions } from "./actions";
+import { buildSubtitle, buildTagAccessories, iconForType } from "./list-helpers";
 import { renderEntryMarkdown } from "./preview";
 import { buildRuntimeRegistry } from "./runtime";
 import { loadEntries, loadRuntimeRegistry } from "./storage";
@@ -35,8 +36,11 @@ export default function BrowseTagsCommand() {
               <List.Item
                 key={entry.id}
                 title={entry.title}
-                subtitle={entry.type}
-                accessories={[{ tag: entry.type }]}
+                icon={iconForType(entry.type)}
+                subtitle={buildSubtitle(entry)}
+                accessories={buildTagAccessories(
+                  entry.tags.filter((t) => t !== tag),
+                )}
                 detail={
                   <List.Item.Detail markdown={renderEntryMarkdown(entry)} />
                 }

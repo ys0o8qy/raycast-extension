@@ -17,6 +17,7 @@ import { renderEntryMarkdown } from "./preview";
 import { getAllTags, normalizeTag } from "./resource";
 import { loadEntries, updateEntry } from "./storage";
 import { LibraryEntry, NewEntryInput } from "./types";
+import { iconForType } from "./list-helpers";
 
 export default function AutoTagResourcesCommand() {
   const { data = [], isLoading, revalidate } =
@@ -398,21 +399,6 @@ function AutoTagFlow(props: {
       />
     </List>
   );
-}
-
-function iconForType(type: LibraryEntry["type"]): Icon {
-  switch (type) {
-    case "link":
-      return Icon.Link;
-    case "image":
-      return Icon.Image;
-    case "text":
-      return Icon.Document;
-    case "schema":
-      return Icon.Code;
-    default:
-      return Icon.Document;
-  }
 }
 
 /**
