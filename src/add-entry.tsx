@@ -424,7 +424,7 @@ export function ResourceFormFlow(props: {
         />
       ) : null}
 
-      <Form.TextField
+      <Form.TextArea
         id="newTag"
         title="New Tag"
         placeholder='Type and press "," or Enter to add'
