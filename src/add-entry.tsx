@@ -206,11 +206,11 @@ export function ResourceFormFlow(props: {
     setTags(normalizeTags([...newOnlyTags, ...values]));
   }
 
-  // ── New-tag TextField: comma creates tags, feeds into TagPicker ─
+  // ── New-tag TextField: comma or Enter creates tags ──────────────
   function handleNewTagInputChange(value: string) {
-    if (value.includes(",")) {
+    if (value.includes(",") || value.includes("\n")) {
       const segments = value
-        .split(",")
+        .split(/[\n,]+/)
         .map((s) => normalizeTag(s))
         .filter(Boolean);
       const newTags = segments.filter((t) => !tags.includes(t));
@@ -427,7 +427,7 @@ export function ResourceFormFlow(props: {
       <Form.TextField
         id="newTag"
         title="New Tag"
-        placeholder='Type and press "," to add'
+        placeholder='Type and press "," or Enter to add'
         value={newTagInput}
         onChange={handleNewTagInputChange}
       />
