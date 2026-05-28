@@ -6,6 +6,7 @@ import {
   confirmAlert,
   Form,
   Icon,
+  Keyboard,
   LaunchProps,
   popToRoot,
   showHUD,
@@ -120,6 +121,8 @@ export function ResourceFormFlow(props: {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [tagSearchInput, setTagSearchInput] = useState("");
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const suggestionTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // ── Clipboard detection ─────────────────────────────────────────
   useEffect(() => {
@@ -146,6 +149,13 @@ export function ResourceFormFlow(props: {
       // Clipboard access is a convenience
     });
   }, [entry, resolvedLaunchContext]);
+
+  // Cleanup suggestion timer on unmount
+  useEffect(() => {
+    return () => {
+      if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!resolvedLaunchContext || !resolvedLaunchContext.autoSave) return;
@@ -200,9 +210,36 @@ export function ResourceFormFlow(props: {
         setTags((prev) => normalizeTags([...prev, ...newTags]));
       }
       setTagSearchInput("");
+      setTagSuggestions([]);
+      if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
       return;
     }
     setTagSearchInput(value);
+
+    // Debounced tag suggestions for ActionPanel quick-select
+    if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
+    const normalized = normalizeTag(value);
+    if (normalized) {
+      suggestionTimerRef.current = setTimeout(() => {
+        const matches = existingTags
+          .filter(
+            (tag) =>
+              tagMatchesSearch(tag, normalized) && !tags.includes(tag),
+          )
+          .slice(0, 5);
+        setTagSuggestions(matches);
+      }, 150);
+    } else {
+      setTagSuggestions([]);
+    }
+  }
+
+  function addSuggestedTag(tag: string) {
+    if (!tags.includes(tag)) {
+      setTags((prev) => normalizeTags([...prev, tag]));
+    }
+    setTagSearchInput("");
+    setTagSuggestions([]);
   }
 
   // ── AI tag suggestion ───────────────────────────────────────────
@@ -347,6 +384,16 @@ export function ResourceFormFlow(props: {
       navigationTitle={entry ? "Edit Resource" : "Add Resource"}
       actions={
         <ActionPanel>
+          {tagSuggestions.length > 0 ? (
+            <Action
+              title={`Add "#${tagSuggestions[0]}"`}
+              icon={Icon.ArrowRight}
+              shortcut={
+                { modifiers: [], key: "return" as Keyboard.KeyEquivalent }
+              }
+              onAction={() => addSuggestedTag(tagSuggestions[0])}
+            />
+          ) : null}
           <Action.SubmitForm
             title={entry ? "Save Changes" : "Save Resource"}
             icon={Icon.SaveDocument}
@@ -364,6 +411,23 @@ export function ResourceFormFlow(props: {
             icon={Icon.MagnifyingGlass}
             onAction={handleAutoDetectType}
           />
+          {tagSuggestions.length > 1 ? (
+            <ActionPanel.Section title="More Matching Tags">
+              {tagSuggestions.slice(1).map((tag, i) => (
+                <Action
+                  key={tag}
+                  title={`Add "#${tag}"`}
+                  icon={Icon.Tag}
+                  shortcut={
+                    i < 8
+                      ? { modifiers: ["cmd"], key: String(i + 2) as Keyboard.KeyEquivalent }
+                      : undefined
+                  }
+                  onAction={() => addSuggestedTag(tag)}
+                />
+              ))}
+            </ActionPanel.Section>
+          ) : null}
         </ActionPanel>
       }
     >
@@ -414,7 +478,11 @@ export function ResourceFormFlow(props: {
         id="tagInput"
         title="Add a tag…"
         placeholder={
-          tags.length > 0 ? '"," to add another' : 'Type a tag, press "," to add'
+          tagSuggestions.length > 0
+            ? `↵ to add "#${tagSuggestions[0]}", "," to create`
+            : tags.length > 0
+              ? '"," to add another'
+              : 'Type a tag, press "," to add'
         }
         value={tagSearchInput}
         onChange={handleTagInputChange}
@@ -589,9 +657,17 @@ function buildTagSuggestions(
     return `Press "," to create "#${normalized}"`;
   }
 
-  const matchList = matches.map((t) => `#${t}`).join(" · ");
+  const matchList =
+    `↵ #${matches[0]}` +
+    (matches.length > 1
+      ? " · " +
+        matches
+          .slice(1)
+          .map((t, i) => `⌘${i + 2} #${t}`)
+          .join(" · ")
+      : "");
   const isExactMatch = matches.some((t) => t === normalized);
   return isExactMatch
-    ? `Existing: ${matchList}`
-    : `Existing: ${matchList} — or "," to create "#${normalized}"`;
+    ? `${matchList} · "," to create`
+    : `${matchList} — or "," to create "#${normalized}"`;
 }
