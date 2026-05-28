@@ -405,17 +405,6 @@ export function ResourceFormFlow(props: {
         onChange={handleResourceChange}
       />
 
-      <Form.Dropdown
-        id="type"
-        title={typeLabel}
-        value={type}
-        onChange={handleTypeChange}
-      >
-        {visibleTypeIds.map((typeId) => (
-          <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
-        ))}
-      </Form.Dropdown>
-
       {/* ── Tags: TagPicker (select existing) + TextField (create new) ─ */}
       <Form.TagPicker
         id="tags"
@@ -471,6 +460,17 @@ export function ResourceFormFlow(props: {
           ))}
         </Form.Dropdown>
       ) : null}
+
+      <Form.Dropdown
+        id="type"
+        title={typeLabel}
+        value={type}
+        onChange={handleTypeChange}
+      >
+        {visibleTypeIds.map((typeId) => (
+          <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
+        ))}
+      </Form.Dropdown>
     </Form>
   );
 }
