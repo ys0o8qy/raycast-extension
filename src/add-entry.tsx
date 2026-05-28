@@ -79,7 +79,10 @@ export function ResourceFormFlow(props: {
   const { pop } = useNavigation();
   const { data: runtimeRegistry = FALLBACK_RUNTIME_REGISTRY } =
     useCachedPromise(loadRuntimeRegistry);
-  const { data: allEntries = [] } = useCachedPromise(loadEntries);
+  const [allEntries, setAllEntries] = useState<LibraryEntry[]>([]);
+  useEffect(() => {
+    loadEntries().then(setAllEntries).catch(() => setAllEntries([]));
+  }, []);
   const existingTags = getAllTags(allEntries);
   const visibleTypeIds = selectVisibleTypeIds([
     ...getRuntimeTypeIds(runtimeRegistry),
