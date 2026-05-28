@@ -192,11 +192,18 @@ export function ResourceFormFlow(props: {
     setIsTypeAutoDetected(false);
   }
 
-  // ── TagPicker: only select from existing tags, cannot create ────
+  // ── TagPicker: only selects from existing tags ──────────────────
+  // TagPicker validates that every value is present in its children (items).
+  // This check fires during chip render, BEFORE onChange, so filtering
+  // in onChange cannot prevent the error for dynamically-created tags.
+  // Solution: TagPicker value only contains existing-tag values; new-only
+  // tags are merged separately and shown in the Description below.
+  const existingTagValues = tags.filter((t) => existingTags.includes(t));
+  const newOnlyTags = tags.filter((t) => !existingTags.includes(t));
+
   function handleTagPickerChange(values: string[]) {
-    // Reject any value not in the existing tags list
-    const validTags = values.filter((tag) => existingTags.includes(tag));
-    setTags(validTags);
+    // Merge: keep new-only tags, replace existing-tag selection from picker
+    setTags(normalizeTags([...newOnlyTags, ...values]));
   }
 
   // ── New-tag TextField: comma creates tags, feeds into TagPicker ─
@@ -413,13 +420,20 @@ export function ResourceFormFlow(props: {
       <Form.TagPicker
         id="tags"
         title="Tags"
-        value={tags}
+        value={existingTagValues}
         onChange={handleTagPickerChange}
       >
         {existingTags.map((tag) => (
           <Form.TagPicker.Item key={tag} value={tag} title={tag} />
         ))}
       </Form.TagPicker>
+
+      {newOnlyTags.length > 0 ? (
+        <Form.Description
+          title="New Tags"
+          text={newOnlyTags.map((t) => `#${t}`).join("  ")}
+        />
+      ) : null}
 
       <Form.TextField
         id="newTag"
