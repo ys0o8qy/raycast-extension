@@ -227,7 +227,6 @@ export function ResourceFormFlow(props: {
               tagMatchesSearch(tag, normalized) && !tags.includes(tag),
           )
           .slice(0, 5);
-        console.log("tagSuggestions:", { input: value, normalized, matches, existingTagsCount: existingTags.length, selectedTagsCount: tags.length });
         setTagSuggestions(matches);
       }, 100); // reduced from 150ms for faster feedback
     } else {
@@ -390,7 +389,7 @@ export function ResourceFormFlow(props: {
               title={`Add "#${tagSuggestions[0]}"`}
               icon={Icon.ArrowRight}
               shortcut={
-                { modifiers: ["cmd"], key: "return" as Keyboard.KeyEquivalent }
+                { modifiers: [], key: "return" as Keyboard.KeyEquivalent }
               }
               onAction={() => addSuggestedTag(tagSuggestions[0])}
             />
@@ -480,7 +479,7 @@ export function ResourceFormFlow(props: {
         title="Add a tag…"
         placeholder={
           tagSuggestions.length > 0
-            ? `⌘↵ to add "#${tagSuggestions[0]}", "," to create`
+            ? `↵ to add "#${tagSuggestions[0]}", "," to create`
             : tags.length > 0
               ? '"," to add another'
               : 'Type a tag, press "," to add'
@@ -659,7 +658,7 @@ function buildTagSuggestions(
   }
 
   const matchList =
-    `⌘↵ #${matches[0]}` +
+    `↵ #${matches[0]}` +
     (matches.length > 1
       ? " · " +
         matches
