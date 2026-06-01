@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   detectResourceType,
   filterEntriesBySearch,
+  findDuplicateEntry,
   isRuntimeTypePersistable,
   mapResourceInputToEntryFields,
   normalizeTags,
@@ -272,6 +273,103 @@ test("filterEntriesBySearch does not match tags or properties for plain keywords
   ];
 
   assert.deepEqual(filterEntriesBySearch(entries, "zg"), []);
+});
+
+test("findDuplicateEntry matches link by exact URL", () => {
+  const entries: LibraryEntry[] = [
+    createEntry({
+      id: "a",
+      title: "Example",
+      type: "link",
+      properties: { URL: "https://example.com" },
+    }),
+  ];
+
+  const result = findDuplicateEntry(
+    entries,
+    "link",
+    "https://example.com",
+    "builtin:link",
+  );
+  assert.ok(result);
+  assert.equal(result?.id, "a");
+});
+
+test("findDuplicateEntry returns undefined when URLs differ", () => {
+  const entries: LibraryEntry[] = [
+    createEntry({
+      id: "a",
+      title: "Example",
+      type: "link",
+      properties: { URL: "https://example.com" },
+    }),
+  ];
+
+  const result = findDuplicateEntry(
+    entries,
+    "link",
+    "https://other.com",
+    "builtin:link",
+  );
+  assert.equal(result, undefined);
+});
+
+test("findDuplicateEntry returns undefined when types differ", () => {
+  const entries: LibraryEntry[] = [
+    createEntry({
+      id: "a",
+      title: "Example",
+      type: "schema",
+      properties: { URL: "https://example.com" },
+    }),
+  ];
+
+  const result = findDuplicateEntry(
+    entries,
+    "link",
+    "https://example.com",
+    "builtin:link",
+  );
+  assert.equal(result, undefined);
+});
+
+test("findDuplicateEntry matches text by exact body", () => {
+  const entries: LibraryEntry[] = [
+    createEntry({
+      id: "b",
+      title: "Snippet",
+      type: "text",
+      body: "const x = 1;",
+    }),
+  ];
+
+  const result = findDuplicateEntry(
+    entries,
+    "text",
+    "const x = 1;",
+    "builtin:text",
+  );
+  assert.ok(result);
+  assert.equal(result?.id, "b");
+});
+
+test("findDuplicateEntry returns undefined when bodies differ", () => {
+  const entries: LibraryEntry[] = [
+    createEntry({
+      id: "b",
+      title: "Snippet",
+      type: "text",
+      body: "const x = 1;",
+    }),
+  ];
+
+  const result = findDuplicateEntry(
+    entries,
+    "text",
+    "let y = 2;",
+    "builtin:text",
+  );
+  assert.equal(result, undefined);
 });
 
 function createEntry(overrides: Partial<LibraryEntry>): LibraryEntry {

@@ -191,6 +191,41 @@ export function entryMatchesTagQueries(
   );
 }
 
+export function findDuplicateEntry(
+  entries: LibraryEntry[],
+  type: string,
+  resource: string,
+  semanticType: BuiltinSemanticType,
+): LibraryEntry | undefined {
+  const trimmed = resource.trim();
+  for (const entry of entries) {
+    if (entry.type !== type) continue;
+
+    switch (semanticType) {
+      case "builtin:link":
+      case "builtin:schema":
+        if (entry.properties.URL === trimmed) return entry;
+        break;
+      case "builtin:asset":
+        if (
+          entry.properties.PATH === trimmed ||
+          entry.properties.URL === trimmed
+        )
+          return entry;
+        break;
+      case "builtin:text":
+      case "builtin:generic":
+        if (entry.body === trimmed) return entry;
+        break;
+      case "builtin:file":
+      case "builtin:directory":
+        if (entry.properties.PATH === trimmed) return entry;
+        break;
+    }
+  }
+  return undefined;
+}
+
 function isImagePath(value: string): boolean {
   const normalized = normalizeLocalResourcePath(value);
   return imagePathPattern.test(normalized);
