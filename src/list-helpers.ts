@@ -73,7 +73,7 @@ export function buildSubtitle(entry: LibraryEntry): string {
 
 export function buildTagAccessories(tags: string[]): List.Item.Accessory[] {
   const items: List.Item.Accessory[] = [];
-  const visible = tags.slice(0, 2);
+  const visible = tags.slice(0, 4);
   for (const tag of visible) {
     items.push({
       tag: { value: tag, color: tagColor(tag) },
