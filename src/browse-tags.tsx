@@ -38,9 +38,7 @@ export default function BrowseTagsCommand() {
                 title={entry.title}
                 icon={iconForType(entry.type)}
                 subtitle={buildSubtitle(entry)}
-                accessories={buildTagAccessories(
-                  entry.tags.filter((t) => t !== tag),
-                )}
+                accessories={buildTagAccessories(entry.tags)}
                 detail={
                   <List.Item.Detail markdown={renderEntryMarkdown(entry)} />
                 }
