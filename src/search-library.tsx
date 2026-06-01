@@ -2,7 +2,7 @@ import { List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { EntryActions } from "./actions";
-import { buildSubtitle, buildTagAccessories, iconForType } from "./list-helpers";
+import { iconForType } from "./list-helpers";
 import { renderEntryMarkdown } from "./preview";
 import { filterEntriesBySearch } from "./resource";
 import { buildRuntimeRegistry } from "./runtime";
@@ -55,8 +55,7 @@ export default function SearchLibraryCommand() {
           key={entry.id}
           title={entry.title}
           icon={iconForType(entry.type)}
-          subtitle={buildSubtitle(entry)}
-          accessories={buildTagAccessories(entry.tags)}
+          subtitle={buildSearchSubtitle(entry)}
           detail={
             <List.Item.Detail
               markdown={renderEntryMarkdown(entry)}
@@ -80,6 +79,37 @@ export default function SearchLibraryCommand() {
       ))}
     </List>
   );
+}
+
+function buildSearchSubtitle(entry: LibraryEntry): string | undefined {
+  switch (entry.type) {
+    case "link": {
+      const url = entry.properties.URL || "";
+      try {
+        return new URL(url).hostname;
+      } catch {
+        return url ? truncate(url, 48) : undefined;
+      }
+    }
+    case "text": {
+      const body = entry.body.replace(/\s+/g, " ").trim();
+      return body ? truncate(body, 64) : undefined;
+    }
+    case "image": {
+      const src = entry.properties.PATH || entry.properties.URL || "";
+      return src.split("/").pop() || undefined;
+    }
+    case "schema":
+      return entry.properties.SCHEMA_KIND || undefined;
+    default: {
+      const body = entry.body.replace(/\s+/g, " ").trim();
+      return body ? truncate(body, 64) : undefined;
+    }
+  }
+}
+
+function truncate(text: string, max: number): string {
+  return text.length <= max ? text : `${text.slice(0, max)}...`;
 }
 
 // ── Metadata ─────────────────────────────────────────────────────

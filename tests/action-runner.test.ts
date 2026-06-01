@@ -181,6 +181,8 @@ function createEntry(overrides: Partial<LibraryEntry>): LibraryEntry {
     sourceHeadline: "** Untitled",
     sourceStartLine: 0,
     sourceEndLine: 1,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }
