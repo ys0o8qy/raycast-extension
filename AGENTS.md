@@ -153,7 +153,7 @@ Project collection flow:
 - `src/search-projects.tsx` renders the `Search Projects` command, project detail resource sections, project creation/editing, archive, add-existing-resource, and add-new-resource-into-role flows.
 - `EntryActions` exposes `Add to Project` as a secondary resource action and `Remove from Project` only when called from a project view context.
 
-`src/search-library.tsx` uses `List` with `isShowingDetail` to show a right-side preview. The list view should not show tags or resource type text; tags stay available in the right-side detail metadata. Preview markdown comes from `src/preview.tsx`, which truncates long bodies and escapes embedded triple backticks before rendering code fences.
+`src/search-library.tsx` uses `List` with `isShowingDetail` to show a right-side preview. The left-side search result title area is space-constrained and should not show tags or resource type text; tags stay available in the right-side detail metadata. Preview markdown comes from `src/preview-markdown.ts` via `src/preview.tsx`, which truncates long bodies and escapes embedded triple backticks before rendering code fences.
 
 `src/actions.tsx` renders the primary resource actions from the resolved runtime action list for each entry.
 
