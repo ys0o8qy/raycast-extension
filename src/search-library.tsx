@@ -23,6 +23,7 @@ export default function SearchLibraryCommand() {
   const { data: projectData = { projects: [], memberships: [] } } =
     useCachedPromise(loadProjectData);
   const [searchText, setSearchText] = useState("");
+  const [showDetail, setShowDetail] = useState(true);
   const entries = filterEntriesBySearch(data, searchText);
 
   // Build a map of entry ID → project titles for project context display
@@ -43,12 +44,22 @@ export default function SearchLibraryCommand() {
   return (
     <List
       isLoading={isLoading}
-      isShowingDetail
+      isShowingDetail={showDetail}
       searchBarPlaceholder="Search resources, e.g. #docs #raycast keyboard"
       searchText={searchText}
       onSearchTextChange={setSearchText}
       filtering={false}
       throttle
+      actions={
+        <ActionPanel>
+          <Action
+            title={showDetail ? "Compact View" : "Detail View"}
+            icon={showDetail ? Icon.List : Icon.AppWindowSidebarLeft}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
+            onAction={() => setShowDetail(!showDetail)}
+          />
+        </ActionPanel>
+      }
     >
       {entries.map((entry) => (
         <List.Item
@@ -56,12 +67,16 @@ export default function SearchLibraryCommand() {
           title={entry.title}
           icon={iconForType(entry.type)}
           subtitle={buildCompactResourceSubtitle(entry)}
-          detail={
-            <ResourceDetail
-              entry={entry}
-              projects={entryProjects.get(entry.id) ?? []}
-            />
-          }
+          {...(showDetail
+            ? {
+                detail: (
+                  <ResourceDetail
+                    entry={entry}
+                    projects={entryProjects.get(entry.id) ?? []}
+                  />
+                ),
+              }
+            : {})}
           actions={
             <EntryActions
               entry={entry}
@@ -77,6 +92,8 @@ export default function SearchLibraryCommand() {
           hasResources={data.length > 0}
           searchText={searchText}
           onSaved={revalidate}
+          showDetail={showDetail}
+          onToggleDetail={() => setShowDetail(!showDetail)}
         />
       ) : null}
     </List>
@@ -87,8 +104,10 @@ function SearchEmptyView(props: {
   hasResources: boolean;
   searchText: string;
   onSaved: () => void;
+  showDetail: boolean;
+  onToggleDetail: () => void;
 }) {
-  const { hasResources, searchText, onSaved } = props;
+  const { hasResources, searchText, onSaved, showDetail, onToggleDetail } = props;
   return (
     <List.EmptyView
       title={hasResources ? "No matching resources" : "No resources yet"}
@@ -117,6 +136,12 @@ function SearchEmptyView(props: {
               content={searchText.trim()}
             />
           ) : null}
+          <Action
+            title={showDetail ? "Compact View" : "Detail View"}
+            icon={showDetail ? Icon.List : Icon.AppWindowSidebarLeft}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "v" }}
+            onAction={onToggleDetail}
+          />
         </ActionPanel>
       }
     />
