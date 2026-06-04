@@ -19,6 +19,7 @@ import { runAction } from "./action-runner";
 import { resolveEntryActionsState } from "./entry-actions-state";
 import { EntryDetail } from "./preview";
 import { buildRuntimeRegistry } from "./runtime";
+import { PROJECT_ROLE_OPTIONS } from "./projects/roles";
 import { RolePicker } from "./projects/role-picker";
 import { filterProjectsBySearch } from "./projects/search";
 import {
@@ -181,7 +182,7 @@ export function EntryActions(props: {
         </>
       ) : null}
       {localPath ? (
-        <Action.CopyToClipboard title="Copy Local Path" content={localPath} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} />
+        <Action.CopyToClipboard title="Copy Local Path" content={localPath} shortcut={{ modifiers: ["cmd", "shift"], key: "l" }} />
       ) : null}
       {url ? <Action.CopyToClipboard title="Copy URL" content={url} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} /> : null}
       {entry ? (
@@ -258,27 +259,14 @@ function ProjectPicker(props: { entry: LibraryEntry; onChanged?: () => void }) {
           icon={Icon.Folder}
           actions={
             <ActionPanel>
-              <Action
-                title="Add to Project"
-                icon={Icon.PlusCircle}
-                shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
-                onAction={() => addToProject(project, "other")}
-              />
-              <Action
-                title="Add as PRD"
-                icon={Icon.Tag}
-                onAction={() => addToProject(project, "prd")}
-              />
-              <Action
-                title="Add as Technical Docs"
-                icon={Icon.Tag}
-                onAction={() => addToProject(project, "technical-doc")}
-              />
-              <Action
-                title="Add as Design"
-                icon={Icon.Tag}
-                onAction={() => addToProject(project, "design")}
-              />
+              {PROJECT_ROLE_OPTIONS.slice(0, 7).map((role) => (
+                <Action
+                  key={role.value}
+                  title={`Add as ${role.title}`}
+                  icon={Icon.Tag}
+                  onAction={() => addToProject(project, role.value)}
+                />
+              ))}
               <Action.Push
                 title="Add with Role…"
                 icon={Icon.Tag}
