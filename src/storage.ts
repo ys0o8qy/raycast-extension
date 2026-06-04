@@ -1,6 +1,6 @@
 import { getPreferenceValues } from "@raycast/api";
 import { promises as fs } from "node:fs";
-import { appendEntryToOrg, createEntryInput } from "./org/serializer";
+import { appendEntryToOrg, createEntryInput, removeEntryFromOrg } from "./org/serializer";
 import { parseOrg, extractLibraryEntries } from "./org/parser";
 import { loadResourceLibraryConfig } from "./config";
 import {
@@ -102,5 +102,12 @@ export async function updateEntry(
     },
     resolveRuntimeStorageInfo(runtimeRegistry, input.type),
   );
+  await fs.writeFile(path, updated, "utf8");
+}
+
+export async function deleteEntry(id: string): Promise<void> {
+  const path = getOrgFilePath();
+  const existingContent = await fs.readFile(path, "utf8");
+  const updated = removeEntryFromOrg(existingContent, id);
   await fs.writeFile(path, updated, "utf8");
 }
