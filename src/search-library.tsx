@@ -5,7 +5,7 @@ import { EntryActions } from "./actions";
 import { ResourceFormFlow } from "./add-entry";
 import { buildCompactResourceSubtitle, iconForType } from "./list-helpers";
 import { ResourceDetail } from "./resource-detail";
-import { filterEntriesBySearch } from "./resource";
+import { filterEntriesBySearch, sortEntries, SortOption } from "./resource";
 import { buildRuntimeRegistry } from "./runtime";
 import { loadProjectData } from "./projects/storage";
 import { loadEntries, loadRuntimeRegistry } from "./storage";
@@ -23,7 +23,9 @@ export default function SearchLibraryCommand() {
   const { data: projectData = { projects: [], memberships: [] } } =
     useCachedPromise(loadProjectData);
   const [searchText, setSearchText] = useState("");
+  const [sortOption, setSortOption] = useState<SortOption>("updated");
   const entries = filterEntriesBySearch(data, searchText);
+  const sortedEntries = sortEntries(entries, sortOption);
 
   // Build a map of entry ID → project titles for project context display
   const entryProjects = useMemo(() => {
@@ -49,8 +51,16 @@ export default function SearchLibraryCommand() {
       onSearchTextChange={setSearchText}
       filtering={false}
       throttle
+      searchBarAccessory={
+        <List.Dropdown tooltip="Sort by" value={sortOption} onChange={(v) => setSortOption(v as SortOption)}>
+          <List.Dropdown.Item value="updated" title="Recently Updated" />
+          <List.Dropdown.Item value="title" title="Title A-Z" />
+          <List.Dropdown.Item value="type" title="Type" />
+          <List.Dropdown.Item value="created" title="Recently Created" />
+        </List.Dropdown>
+      }
     >
-      {entries.map((entry) => (
+      {sortedEntries.map((entry) => (
         <List.Item
           key={entry.id}
           title={entry.title}
@@ -72,7 +82,7 @@ export default function SearchLibraryCommand() {
           }
         />
       ))}
-      {entries.length === 0 ? (
+      {sortedEntries.length === 0 ? (
         <SearchEmptyView
           hasResources={data.length > 0}
           searchText={searchText}
