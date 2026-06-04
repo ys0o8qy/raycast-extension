@@ -50,6 +50,9 @@ function AutoTagFlow(props: {
   // Batch selection
   const [batch, setBatch] = useState<LibraryEntry[]>([]);
 
+  // Lightly tagged threshold (user-adjustable)
+  const [lightlyTaggedThreshold, setLightlyTaggedThreshold] = useState(2);
+
   // Processing
   const [phase, setPhase] = useState<FlowPhase>("select");
 
@@ -190,8 +193,36 @@ function AutoTagFlow(props: {
       (entry) => entry.tags.length === 0,
     );
     const lightlyTaggedEntries = availableEntries.filter(
-      (entry) => entry.tags.length > 0 && entry.tags.length <= 2,
+      (entry) => entry.tags.length > 0 && entry.tags.length <= lightlyTaggedThreshold,
     );
+
+    // Type-filtered entries (for quick-add actions)
+    const uniqueTypes = [...new Set(availableEntries.map((e) => e.type))];
+    function entriesOfType(type: string) {
+      return availableEntries.filter((e) => e.type === type);
+    }
+
+    // Recent entries (last 7 days)
+    const now = new Date();
+    const recentCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const recentEntries = availableEntries.filter((entry) => {
+      if (!entry.createdAt) return false;
+      try {
+        return new Date(entry.createdAt) >= recentCutoff;
+      } catch {
+        return false;
+      }
+    });
+
+    // Threshold cycle helper
+    function cycleThreshold() {
+      setLightlyTaggedThreshold((prev) => {
+        const options = [1, 2, 3, 5];
+        const idx = options.indexOf(prev);
+        const next = options[(idx + 1) % options.length];
+        return next;
+      });
+    }
 
     return (
       <List
@@ -213,10 +244,28 @@ function AutoTagFlow(props: {
               onAction={() => addEntriesToBatch(untaggedEntries)}
             />
             <Action
-              title="Add Lightly Tagged"
+              title={`Add Lightly Tagged (≤${lightlyTaggedThreshold} tags)`}
               icon={Icon.Tag}
               onAction={() => addEntriesToBatch(lightlyTaggedEntries)}
             />
+            <Action
+              title={`Threshold: ≤${lightlyTaggedThreshold}`}
+              icon={Icon.Switch}
+              onAction={cycleThreshold}
+            />
+            <Action
+              title="Add Recent (Last 7 Days)"
+              icon={Icon.Clock}
+              onAction={() => addEntriesToBatch(recentEntries)}
+            />
+            {uniqueTypes.filter((t) => entriesOfType(t).length > 0).map((type) => (
+              <Action
+                key={`add-all-${type}`}
+                title={`Add All ${capitalize(type)}`}
+                icon={iconForType(type)}
+                onAction={() => addEntriesToBatch(entriesOfType(type))}
+              />
+            ))}
             <Action
               title="Clear Batch"
               icon={Icon.XMarkCircle}
@@ -254,6 +303,29 @@ function AutoTagFlow(props: {
                       icon={Icon.PlusCircle}
                       onAction={() => addEntriesToBatch(untaggedEntries)}
                     />
+                    <Action
+                      title={`Add Lightly Tagged (≤${lightlyTaggedThreshold} tags)`}
+                      icon={Icon.Tag}
+                      onAction={() => addEntriesToBatch(lightlyTaggedEntries)}
+                    />
+                    <Action
+                      title={`Threshold: ≤${lightlyTaggedThreshold}`}
+                      icon={Icon.Switch}
+                      onAction={cycleThreshold}
+                    />
+                    <Action
+                      title="Add Recent (Last 7 Days)"
+                      icon={Icon.Clock}
+                      onAction={() => addEntriesToBatch(recentEntries)}
+                    />
+                    {uniqueTypes.filter((t) => entriesOfType(t).length > 0).map((type) => (
+                      <Action
+                        key={`batch-add-all-${type}`}
+                        title={`Add All ${capitalize(type)}`}
+                        icon={iconForType(type)}
+                        onAction={() => addEntriesToBatch(entriesOfType(type))}
+                      />
+                    ))}
                   </ActionPanel>
                 }
               />
@@ -280,10 +352,28 @@ function AutoTagFlow(props: {
                   onAction={() => addEntriesToBatch(untaggedEntries)}
                 />
                 <Action
-                  title="Add Lightly Tagged"
+                  title={`Add Lightly Tagged (≤${lightlyTaggedThreshold} tags)`}
                   icon={Icon.Tag}
                   onAction={() => addEntriesToBatch(lightlyTaggedEntries)}
                 />
+                <Action
+                  title={`Threshold: ≤${lightlyTaggedThreshold}`}
+                  icon={Icon.Switch}
+                  onAction={cycleThreshold}
+                />
+                <Action
+                  title="Add Recent (Last 7 Days)"
+                  icon={Icon.Clock}
+                  onAction={() => addEntriesToBatch(recentEntries)}
+                />
+                {uniqueTypes.filter((t) => entriesOfType(t).length > 0).map((type) => (
+                  <Action
+                    key={`entry-add-all-${type}`}
+                    title={`Add All ${capitalize(type)}`}
+                    icon={iconForType(type)}
+                    onAction={() => addEntriesToBatch(entriesOfType(type))}
+                  />
+                ))}
               </ActionPanel>
             }
           />
@@ -403,6 +493,14 @@ function AutoTagFlow(props: {
       />
     </List>
   );
+}
+
+/**
+ * Capitalize the first character of a string.
+ */
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /**
