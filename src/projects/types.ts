@@ -16,6 +16,8 @@ export interface Project {
 export interface ProjectInput {
   id?: string;
   title: string;
+  status?: string;
+  owner?: string;
 }
 
 export interface ProjectMembership {

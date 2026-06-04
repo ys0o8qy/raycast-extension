@@ -126,6 +126,8 @@ function buildProjectBlock(
 ): string {
   const propertyLines: Array<[string, string | undefined]> = [
     ["PROJECT_ID", input.id],
+    ["STATUS", input.status],
+    ["OWNER", input.owner],
   ];
 
   return [
@@ -164,6 +166,8 @@ function normalizeProjectInput(input: ProjectInput): Required<ProjectInput> {
   return {
     id: input.id?.trim() || `proj_${randomUUID()}`,
     title: input.title.trim(),
+    status: input.status?.trim() || "active",
+    owner: input.owner?.trim() || "",
   };
 }
 
