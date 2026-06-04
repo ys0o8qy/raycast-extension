@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Icon, List } from "@raycast/api";
+import { Action, ActionPanel, Color, Form, Icon, List, showHUD, showToast, Toast, useNavigation } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { EntryActions } from "./actions";
 import { ResourceFormFlow } from "./add-entry";
@@ -6,7 +6,8 @@ import AutoTagResourcesCommand from "./auto-tag-resources";
 import { buildCompactResourceSubtitle, iconForType } from "./list-helpers";
 import { ResourceDetail } from "./resource-detail";
 import { buildRuntimeRegistry } from "./runtime";
-import { loadEntries, loadRuntimeRegistry } from "./storage";
+import { loadEntries, loadRuntimeRegistry, updateEntry } from "./storage";
+import { LibraryEntry, NewEntryInput } from "./types";
 import TagGovernanceCommand from "./tag-governance";
 
 const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
@@ -40,6 +41,35 @@ export default function BrowseTagsCommand() {
             title={`#${tag}`}
             subtitle={`${entries.length}`}
           >
+            <List.Item
+              key={`${tag}--header`}
+              title={`#${tag}`}
+              subtitle={`${entries.length} resource${entries.length === 1 ? "" : "s"} — Click for options`}
+              icon={{ source: Icon.Tag, tintColor: Color.Blue }}
+              actions={
+                <ActionPanel>
+                  <Action.Push
+                    title="Rename Tag"
+                    icon={Icon.Pencil}
+                    target={
+                      <TagRenameForm
+                        tag={tag}
+                        entries={data ?? []}
+                      />
+                    }
+                  />
+                  <Action.Push
+                    title="View in Governance"
+                    icon={Icon.Gear}
+                    target={<TagGovernanceCommand />}
+                  />
+                  <Action.CopyToClipboard
+                    title="Copy Tag Name"
+                    content={tag}
+                  />
+                </ActionPanel>
+              }
+            />
             {entries.map((entry) => (
               <List.Item
                 key={entry.id}
@@ -89,5 +119,71 @@ function TagCenterActions() {
         target={<TagGovernanceCommand />}
       />
     </ActionPanel>
+  );
+}
+
+function TagRenameForm(props: { tag: string; entries: LibraryEntry[] }) {
+  const { tag, entries } = props;
+  const { pop } = useNavigation();
+  const entriesWithTag = entries.filter((e) => e.tags.includes(tag));
+
+  async function handleSubmit(values: { newName: string }) {
+    const newName = values.newName.trim().toLowerCase().replace(/\s+/g, "-");
+    if (!newName) {
+      await showToast({ style: Toast.Style.Failure, title: "Tag name is required" });
+      return;
+    }
+    if (newName === tag) {
+      pop();
+      return;
+    }
+
+    let updated = 0;
+    for (const entry of entriesWithTag) {
+      const newTags = entry.tags.map((t) => (t === tag ? newName : t));
+      const input: NewEntryInput = {
+        title: entry.title,
+        type: entry.type,
+        tags: newTags,
+        groupPath: [],
+        url: entry.properties.URL,
+        path: entry.properties.PATH,
+        schemaKind: entry.properties.SCHEMA_KIND,
+        schemaCommand: entry.properties.SCHEMA_COMMAND,
+        schemaArgs: entry.properties.SCHEMA_ARGS,
+        body: entry.body,
+      };
+      try {
+        await updateEntry(entry.id, input);
+        updated++;
+      } catch {
+        // continue
+      }
+    }
+    await showHUD(`Renamed tag #${tag} → #${newName} (${updated} resources)`);
+    pop();
+  }
+
+  return (
+    <Form
+      navigationTitle={`Rename Tag #${tag}`}
+      actions={
+        <ActionPanel>
+          <Action.SubmitForm title="Rename Tag" icon={Icon.Pencil} onSubmit={handleSubmit} />
+        </ActionPanel>
+      }
+    >
+      <Form.Description
+        title="Current Tag"
+        text={`#${tag} — used by ${entriesWithTag.length} resource${entriesWithTag.length === 1 ? "" : "s"}`}
+      />
+      <Form.TextField
+        id="newName"
+        title="New Name"
+        placeholder="new-tag-name"
+        defaultValue={tag}
+        autoFocus
+      />
+    </Form>
   );
 }

@@ -1,6 +1,7 @@
 import {
   Action,
   ActionPanel,
+  Color,
   Form,
   Icon,
   List,
@@ -78,7 +79,7 @@ export default function SearchProjectsCommand() {
             project,
             membershipCounts.get(project.id) ?? 0,
           )}
-          icon={Icon.Folder}
+          icon={projectIcon(project)}
           actions={
             <ProjectListActions project={project} onChanged={revalidate} />
           }
@@ -108,7 +109,23 @@ export default function SearchProjectsCommand() {
   );
 }
 
+function projectIcon(project: Project): { source: Icon; tintColor: Color } {
+  switch (project.status) {
+    case "archived":
+      return { source: Icon.Folder, tintColor: Color.SecondaryText };
+    case "done":
+      return { source: Icon.Folder, tintColor: Color.Green };
+    case "on-hold":
+      return { source: Icon.Folder, tintColor: Color.Orange };
+    default:
+      return { source: Icon.Folder, tintColor: Color.Blue };
+  }
+}
+
 function buildProjectSubtitle(project: Project, resourceCount: number): string {
+  if (project.status === "archived") {
+    return "(archived)";
+  }
   const parts = [
     `${resourceCount} resource${resourceCount === 1 ? "" : "s"}`,
   ];
