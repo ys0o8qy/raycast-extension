@@ -209,10 +209,7 @@ export function ResourceFormFlow(props: {
   // ── New-tag TextField: comma or Enter creates tags ──────────────
   function handleNewTagInputChange(value: string) {
     if (value.includes(",") || value.includes("\n")) {
-      const segments = value
-        .split(/[\n,]+/)
-        .map((s) => normalizeTag(s))
-        .filter(Boolean);
+      const segments = parseNewTagInput(value);
       const newTags = segments.filter((t) => !tags.includes(t));
       if (newTags.length > 0) {
         setTags((prev) => normalizeTags([...prev, ...newTags]));
@@ -312,7 +309,10 @@ export function ResourceFormFlow(props: {
     }
 
     const semanticType = getRuntimeTypeDefinition(runtimeRegistry, type).extends;
-    const normalizedTags = normalizeTags(tags);
+    const normalizedTags = normalizeTags([
+      ...tags,
+      ...parseNewTagInput(newTagInput),
+    ]);
     const input = buildEntryInput(
       { title, type, resource: content },
       normalizedTags,
@@ -427,7 +427,7 @@ export function ResourceFormFlow(props: {
       <Form.TextArea
         id="newTag"
         title="New Tag"
-        placeholder='Type and press "," or Enter to add'
+        placeholder='Type a tag, then press "," / Enter or save'
         value={newTagInput}
         onChange={handleNewTagInputChange}
       />
@@ -505,6 +505,13 @@ function buildEntryInput(
     tags,
     ...mapResourceInputToEntryFields(semanticType, resource),
   };
+}
+
+function parseNewTagInput(value: string): string[] {
+  return value
+    .split(/[\n,]+/)
+    .map((segment) => normalizeTag(segment))
+    .filter(Boolean);
 }
 
 // ── Deeplink auto-save ──────────────────────────────────────────

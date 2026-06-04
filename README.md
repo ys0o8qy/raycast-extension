@@ -62,9 +62,10 @@ Tag filters use normalized substring matching and Chinese first-letter matching.
 The add/edit flow uses one tag picker screen:
 
 - Search existing tags.
-- Press Enter on an existing tag to select it.
-- Type a new tag and press Enter on `Create #tag` to create it.
-- Press Enter on `Save Resource` or `Update Resource` with an empty search box to finish.
+- Select existing tags from the picker.
+- Type a new tag in `New Tag`; pressing comma, pressing Enter, or saving the form adds it.
+- Use `Suggest Tags` to review AI suggestions before adding them.
+- Saving with no tags is valid.
 
 ## Project Collections
 

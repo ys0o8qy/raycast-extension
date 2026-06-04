@@ -135,12 +135,11 @@ Step 1 collects:
 - Resource content.
 - Resource type via a single-select `Form.Dropdown` built from the runtime registry, not a hard-coded closed type list.
 
-Step 2 collects:
+Organization fields come after the core resource fields:
 
-- Tags via a custom `List` selector with one search box.
-- Empty search shows `Save Resource`/`Update Resource` as the first item, so pressing Enter finishes the flow.
-- Existing tags are filtered from the search text and can be toggled selected/unselected.
-- New tags are created from the same search box through a first-position `Create #tag` list item when there is no exact existing/selected tag match.
+- Existing tags through `Form.TagPicker`.
+- New tags through the `New Tag` text area, where comma, Enter, or saving the form creates normalized tags.
+- AI tag suggestions through the `Suggest Tags` action.
 - Saving with no selected tags is valid and writes an empty tag list.
 
 Editing is launched from `src/actions.tsx` via `Action.Push` and refreshes the search view when saved.
