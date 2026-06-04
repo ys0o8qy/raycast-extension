@@ -13,12 +13,12 @@ import { useCachedPromise } from "@raycast/utils";
 import { useState } from "react";
 import { EntryActions } from "./actions";
 import { ResourceFormFlow } from "./add-entry";
-import { renderEntryMarkdown } from "./preview";
 import { filterEntriesBySearch } from "./resource";
+import { ResourceDetail } from "./resource-detail";
 import { buildRuntimeRegistry } from "./runtime";
 import { loadRuntimeRegistry } from "./storage";
 import { LibraryEntry } from "./types";
-import { buildSubtitle, iconForType } from "./list-helpers";
+import { buildCompactResourceSubtitle, iconForType } from "./list-helpers";
 import { displayRole } from "./projects/parser";
 import { RolePicker } from "./projects/role-picker";
 import { filterProjectsBySearch } from "./projects/search";
@@ -51,6 +51,13 @@ export default function SearchProjectsCommand() {
     data?.projects ?? [],
     searchText,
   );
+  const membershipCounts = new Map<string, number>();
+  for (const membership of data?.memberships ?? []) {
+    membershipCounts.set(
+      membership.projectId,
+      (membershipCounts.get(membership.projectId) ?? 0) + 1,
+    );
+  }
 
   return (
     <List
@@ -65,6 +72,10 @@ export default function SearchProjectsCommand() {
         <List.Item
           key={project.id}
           title={project.title}
+          subtitle={buildProjectSubtitle(
+            project,
+            membershipCounts.get(project.id) ?? 0,
+          )}
           icon={Icon.Folder}
           actions={
             <ProjectListActions project={project} onChanged={revalidate} />
@@ -93,6 +104,19 @@ export default function SearchProjectsCommand() {
       ) : null}
     </List>
   );
+}
+
+function buildProjectSubtitle(project: Project, resourceCount: number): string {
+  const parts = [
+    `${resourceCount} resource${resourceCount === 1 ? "" : "s"}`,
+  ];
+  if (project.status && project.status !== "active") {
+    parts.push(project.status);
+  }
+  if (project.owner) {
+    parts.push(project.owner);
+  }
+  return parts.join(" · ");
 }
 
 function ProjectListActions(props: {
@@ -217,9 +241,9 @@ function ProjectResourcesView(props: { projectId: string }) {
                 key={`${membership.projectId}:${membership.entryId}`}
                 title={membership.titleOverride || entry.title}
                 icon={iconForType(entry.type)}
-                subtitle={buildSubtitle(entry)}
+                subtitle={buildCompactResourceSubtitle(entry)}
                 detail={
-                  <List.Item.Detail markdown={renderEntryMarkdown(entry)} />
+                  <ResourceDetail entry={entry} projects={[project.title]} />
                 }
                 actions={
                   <EntryActions
@@ -393,8 +417,8 @@ export function AddResourcesToProject(props: {
           key={entry.id}
           title={entry.title}
           icon={iconForType(entry.type)}
-          subtitle={buildSubtitle(entry)}
-          detail={<List.Item.Detail markdown={renderEntryMarkdown(entry)} />}
+          subtitle={buildCompactResourceSubtitle(entry)}
+          detail={<ResourceDetail entry={entry} />}
           actions={
             <ActionPanel>
               <Action

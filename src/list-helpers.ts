@@ -20,43 +20,35 @@ export function iconForType(
   }
 }
 
-// ── Subtitle ──────────────────────────────────────────────────────
+// ── Compact Row Subtitle ─────────────────────────────────────────
 
-export function buildSubtitle(entry: LibraryEntry): string {
-  const parts: string[] = [entry.type];
-
+export function buildCompactResourceSubtitle(
+  entry: LibraryEntry,
+): string | undefined {
   switch (entry.type) {
     case "link": {
       const url = entry.properties.URL || "";
       try {
-        parts.push(new URL(url).hostname);
+        return new URL(url).hostname;
       } catch {
-        if (url) parts.push(truncate(url, 40));
+        return url ? truncate(url, 48) : undefined;
       }
-      break;
     }
     case "text": {
-      const body = entry.body || "";
-      if (body) {
-        const preview = body.replace(/\n/g, " ").slice(0, 60);
-        parts.push(preview + (body.length > 60 ? "…" : ""));
-      }
-      break;
+      const body = entry.body.replace(/\s+/g, " ").trim();
+      return body ? truncate(body, 64) : undefined;
     }
     case "image": {
       const src = entry.properties.PATH || entry.properties.URL || "";
-      const filename = src.split("/").pop() || "";
-      if (filename) parts.push(filename);
-      break;
+      return src.split("/").pop() || undefined;
     }
-    case "schema": {
-      const kind = entry.properties.SCHEMA_KIND;
-      if (kind) parts.push(kind);
-      break;
+    case "schema":
+      return entry.properties.SCHEMA_KIND || undefined;
+    default: {
+      const body = entry.body.replace(/\s+/g, " ").trim();
+      return body ? truncate(body, 64) : undefined;
     }
   }
-
-  return parts.join(" · ");
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
