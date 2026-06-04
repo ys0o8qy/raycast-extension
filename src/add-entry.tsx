@@ -452,6 +452,34 @@ export function ResourceFormFlow(props: {
         onChange={handleResourceChange}
       />
 
+      <Form.Dropdown
+        id="type"
+        title={typeLabel}
+        value={type}
+        onChange={handleTypeChange}
+      >
+        {visibleTypeIds.map((typeId) => (
+          <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
+        ))}
+      </Form.Dropdown>
+
+      {projectRole !== undefined && onProjectRoleChange ? (
+        <Form.Dropdown
+          id="role"
+          title="Project Role"
+          value={projectRole}
+          onChange={onProjectRoleChange}
+        >
+          {PROJECT_ROLE_OPTIONS.map((option) => (
+            <Form.Dropdown.Item
+              key={option.value}
+              value={option.value}
+              title={option.title}
+            />
+          ))}
+        </Form.Dropdown>
+      ) : null}
+
       {/* ── Tags: TagPicker (select existing) + TextField (create new) ─ */}
       <Form.TagPicker
         id="tags"
@@ -490,34 +518,6 @@ export function ResourceFormFlow(props: {
           text={`${suggestedTags.length} tag${suggestedTags.length > 1 ? "s" : ""} ready.`}
         />
       ) : null}
-
-      {projectRole !== undefined && onProjectRoleChange ? (
-        <Form.Dropdown
-          id="role"
-          title="Project Role"
-          value={projectRole}
-          onChange={onProjectRoleChange}
-        >
-          {PROJECT_ROLE_OPTIONS.map((option) => (
-            <Form.Dropdown.Item
-              key={option.value}
-              value={option.value}
-              title={option.title}
-            />
-          ))}
-        </Form.Dropdown>
-      ) : null}
-
-      <Form.Dropdown
-        id="type"
-        title={typeLabel}
-        value={type}
-        onChange={handleTypeChange}
-      >
-        {visibleTypeIds.map((typeId) => (
-          <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
-        ))}
-      </Form.Dropdown>
     </Form>
   );
 }
