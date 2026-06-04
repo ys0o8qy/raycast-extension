@@ -1,15 +1,5 @@
-import { Color, Icon, List } from "@raycast/api";
+import { Color, Icon } from "@raycast/api";
 import { LibraryEntry } from "./types";
-
-const TAG_COLORS: Color[] = [
-  Color.Blue,
-  Color.Green,
-  Color.Orange,
-  Color.Purple,
-  Color.Magenta,
-  Color.Yellow,
-  Color.Red,
-];
 
 // ── Icon ──────────────────────────────────────────────────────────
 
@@ -67,33 +57,6 @@ export function buildSubtitle(entry: LibraryEntry): string {
   }
 
   return parts.join(" · ");
-}
-
-// ── Tag accessories ───────────────────────────────────────────────
-
-export function buildTagAccessories(tags: string[]): List.Item.Accessory[] {
-  const items: List.Item.Accessory[] = [];
-  const visible = tags.slice(0, 4);
-  for (const tag of visible) {
-    items.push({
-      tag: { value: tag, color: tagColor(tag) },
-    });
-  }
-  const remaining = tags.length - visible.length;
-  if (remaining > 0) {
-    items.push({
-      tag: { value: `+${remaining}`, color: Color.SecondaryText },
-    });
-  }
-  return items;
-}
-
-export function tagColor(tag: string): Color {
-  let hash = 0;
-  for (let i = 0; i < tag.length; i++) {
-    hash = tag.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
