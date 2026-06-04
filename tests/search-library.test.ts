@@ -13,6 +13,25 @@ test("search result rows keep tags out of the compact title area", () => {
   assert.doesNotMatch(source, /subtitle=\{buildSubtitle\(entry\)\}/);
 });
 
+test("compact resource rows outside search do not render tag accessories", () => {
+  const sources = [
+    "src/browse-tags.tsx",
+    "src/search-projects.tsx",
+    "src/auto-tag-resources.tsx",
+  ].map((path) => readFileSync(join(process.cwd(), path), "utf8"));
+
+  for (const source of sources) {
+    assert.doesNotMatch(source, /buildTagAccessories/);
+    assert.doesNotMatch(source, /accessories=\{buildTagAccessories\(entry\.tags\)\}/);
+  }
+});
+
+test("tag accessory helper is not available for compact resource rows", () => {
+  const source = readFileSync(join(process.cwd(), "src/list-helpers.ts"), "utf8");
+
+  assert.doesNotMatch(source, /function buildTagAccessories/);
+});
+
 test("entry preview uses compact title and useful link content", () => {
   const markdown = renderEntryMarkdown({
     ...baseEntry,

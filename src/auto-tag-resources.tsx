@@ -17,7 +17,7 @@ import { renderEntryMarkdown } from "./preview";
 import { getAllTags, normalizeTag } from "./resource";
 import { loadEntries, updateEntry } from "./storage";
 import { LibraryEntry, NewEntryInput } from "./types";
-import { iconForType, buildTagAccessories } from "./list-helpers";
+import { iconForType } from "./list-helpers";
 
 export default function AutoTagResourcesCommand() {
   const { data = [], isLoading, revalidate } =
@@ -205,7 +205,6 @@ function AutoTagFlow(props: {
                 key={`batch-${entry.id}`}
                 title={entry.title}
                 icon={Icon.CheckCircle}
-                accessories={buildTagAccessories(entry.tags)}
                 actions={
                   <ActionPanel>
                     <Action
@@ -233,7 +232,6 @@ function AutoTagFlow(props: {
               key={entry.id}
               title={entry.title}
               icon={iconForType(entry.type)}
-              accessories={buildTagAccessories(entry.tags)}
               actions={
                 <ActionPanel>
                   <Action
