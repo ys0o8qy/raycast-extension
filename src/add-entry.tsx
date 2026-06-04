@@ -63,6 +63,13 @@ const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
   types: {},
 });
 
+const TYPE_DESCRIPTIONS: Record<string, string> = {
+  link: "link — Web URL",
+  image: "image — Local or remote image",
+  text: "text — Text snippet or note",
+  schema: "schema — URI scheme or structured data",
+};
+
 export default function AddEntryCommand(
   props: LaunchProps<{ launchContext?: AddEntryLaunchContext }>,
 ) {
@@ -146,6 +153,12 @@ export function ResourceFormFlow(props: {
       }
       setResource(res);
       setIsTypeAutoDetected(true);
+      if (res) {
+        await showToast({
+          style: Toast.Style.Success,
+          title: `Detected ${detectedType} from clipboard`,
+        });
+      }
     }
     loadClipboard().catch(() => {
       // Clipboard access is a convenience
@@ -410,6 +423,12 @@ export function ResourceFormFlow(props: {
       navigationTitle={entry ? "Edit Resource" : "Add Resource"}
       actions={
         <ActionPanel>
+          <Action
+            title="Cancel"
+            icon={Icon.XMarkCircle}
+            shortcut={{ modifiers: ["cmd"], key: "escape" }}
+            onAction={() => pop()}
+          />
           <Action.SubmitForm
             title={entry ? "Save Changes" : "Save Resource"}
             icon={Icon.SaveDocument}
@@ -459,7 +478,11 @@ export function ResourceFormFlow(props: {
         onChange={handleTypeChange}
       >
         {visibleTypeIds.map((typeId) => (
-          <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
+          <Form.Dropdown.Item
+            key={typeId}
+            value={typeId}
+            title={TYPE_DESCRIPTIONS[typeId] || typeId}
+          />
         ))}
       </Form.Dropdown>
 
@@ -492,10 +515,14 @@ export function ResourceFormFlow(props: {
         ))}
       </Form.TagPicker>
 
-      {newOnlyTags.length > 0 ? (
+      {tags.length > 0 ? (
         <Form.Description
-          title="New Tags"
-          text={newOnlyTags.map((t) => `#${t}`).join("  ")}
+          title="Current Tags"
+          text={tags
+            .map((t) =>
+              newOnlyTags.includes(t) ? `#${t} (new)` : `#${t}`,
+            )
+            .join("  ")}
         />
       ) : null}
 
