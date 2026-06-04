@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { normalizeTags } from "../resource";
 import { BuiltinSemanticType, EntryInput, NewEntryInput } from "../types";
+import { parseOrg, extractLibraryEntries } from "./parser";
 
 export interface SerializerRuntimeInfo {
   semanticType: BuiltinSemanticType;
@@ -149,6 +150,26 @@ export function appendEntryToOrg(
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trimEnd()}\n`;
+}
+
+export function removeEntryFromOrg(content: string, id: string): string {
+  const entries = extractLibraryEntries(parseOrg(content));
+  const entry = entries.find((candidate) => candidate.id === id);
+
+  if (!entry) {
+    return content;
+  }
+
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  lines.splice(
+    entry.sourceStartLine,
+    entry.sourceEndLine - entry.sourceStartLine,
+  );
+
+  return lines
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trimEnd() + "\n";
 }
 
 function inferRuntimeInfo(type: string): SerializerRuntimeInfo {

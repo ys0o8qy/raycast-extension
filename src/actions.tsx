@@ -26,6 +26,7 @@ import {
   loadProjectData,
   removeProjectMembership,
 } from "./projects/storage";
+import { deleteEntry } from "./storage";
 import { Project } from "./projects/types";
 import { LibraryEntry, ResolvedAction, RuntimeRegistry } from "./types";
 import {
@@ -119,6 +120,32 @@ export function EntryActions(props: {
           icon={Icon.Pencil}
           shortcut={{ modifiers: ["cmd"], key: "e" }}
           target={<ResourceFormFlow entry={entry} onSaved={onChanged} />}
+        />
+      ) : null}
+      {entry ? (
+        <Action
+          title="Delete Resource"
+          icon={Icon.Trash}
+          style={Action.Style.Destructive}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "backspace" }}
+          onAction={async () => {
+            if (
+              !(await confirmAlert({
+                title: "Delete Resource",
+                message: `Delete "${entry.title}"? This cannot be undone.`,
+                primaryAction: {
+                  title: "Delete",
+                  style: Alert.ActionStyle.Destructive,
+                },
+              }))
+            ) {
+              return;
+            }
+            await deleteEntry(entry.id);
+            await showHUD("Resource deleted");
+            onChanged?.();
+            onReload?.();
+          }}
         />
       ) : null}
       {entry && !projectContext ? (
