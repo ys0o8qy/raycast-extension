@@ -17,6 +17,7 @@ import { useCachedPromise } from "@raycast/utils";
 import { useEffect, useRef, useState } from "react";
 import {
   detectResourceType,
+  findDuplicateEntry,
   getAllTags,
   isRuntimeTypePersistable,
   mapResourceInputToEntryFields,
@@ -313,6 +314,52 @@ export function ResourceFormFlow(props: {
       ...tags,
       ...parseNewTagInput(newTagInput),
     ]);
+
+    if (!entry) {
+      const duplicateEntry = findDuplicateEntry(
+        allEntries,
+        type,
+        content,
+        semanticType,
+      );
+      if (duplicateEntry) {
+        const shouldUpdate = await confirmAlert({
+          title: "Duplicate Resource Found",
+          message: `"${duplicateEntry.title}" already has the same content. Update it instead?`,
+          primaryAction: { title: "Update Existing" },
+          dismissAction: { title: "Create New Anyway" },
+        });
+        if (shouldUpdate) {
+          const mergedTags = normalizeTags([
+            ...duplicateEntry.tags,
+            ...normalizedTags,
+          ]);
+          const mergedInput = buildEntryInput(
+            { title, type, resource: content },
+            mergedTags,
+            semanticType,
+            type,
+          );
+          const savingToast = await showToast({
+            style: Toast.Style.Animated,
+            title: "Updating resource…",
+          });
+          try {
+            await updateEntry(duplicateEntry.id, mergedInput);
+            savingToast.style = Toast.Style.Success;
+            savingToast.title = "Resource updated";
+            await onSaved?.(duplicateEntry.id);
+            pop();
+          } catch (error) {
+            savingToast.style = Toast.Style.Failure;
+            savingToast.title = "Failed to update resource";
+            savingToast.message = String(error);
+          }
+          return;
+        }
+      }
+    }
+
     const input = buildEntryInput(
       { title, type, resource: content },
       normalizedTags,
@@ -405,6 +452,34 @@ export function ResourceFormFlow(props: {
         onChange={handleResourceChange}
       />
 
+      <Form.Dropdown
+        id="type"
+        title={typeLabel}
+        value={type}
+        onChange={handleTypeChange}
+      >
+        {visibleTypeIds.map((typeId) => (
+          <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
+        ))}
+      </Form.Dropdown>
+
+      {projectRole !== undefined && onProjectRoleChange ? (
+        <Form.Dropdown
+          id="role"
+          title="Project Role"
+          value={projectRole}
+          onChange={onProjectRoleChange}
+        >
+          {PROJECT_ROLE_OPTIONS.map((option) => (
+            <Form.Dropdown.Item
+              key={option.value}
+              value={option.value}
+              title={option.title}
+            />
+          ))}
+        </Form.Dropdown>
+      ) : null}
+
       {/* ── Tags: TagPicker (select existing) + TextField (create new) ─ */}
       <Form.TagPicker
         id="tags"
@@ -443,34 +518,6 @@ export function ResourceFormFlow(props: {
           text={`${suggestedTags.length} tag${suggestedTags.length > 1 ? "s" : ""} ready.`}
         />
       ) : null}
-
-      {projectRole !== undefined && onProjectRoleChange ? (
-        <Form.Dropdown
-          id="role"
-          title="Project Role"
-          value={projectRole}
-          onChange={onProjectRoleChange}
-        >
-          {PROJECT_ROLE_OPTIONS.map((option) => (
-            <Form.Dropdown.Item
-              key={option.value}
-              value={option.value}
-              title={option.title}
-            />
-          ))}
-        </Form.Dropdown>
-      ) : null}
-
-      <Form.Dropdown
-        id="type"
-        title={typeLabel}
-        value={type}
-        onChange={handleTypeChange}
-      >
-        {visibleTypeIds.map((typeId) => (
-          <Form.Dropdown.Item key={typeId} value={typeId} title={typeId} />
-        ))}
-      </Form.Dropdown>
     </Form>
   );
 }

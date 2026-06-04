@@ -8,6 +8,22 @@ A Raycast extension for saving and using links, images, text snippets, schema en
 - `Search Projects`: search project collections, open a project, and use the resources attached to it.
 - `Browse Tags`: browse resources grouped by tag.
 - `Add Resource`: add a resource from clipboard content, choose its type, and assign tags.
+- `Auto-Tag Resources`: queue resources and review AI tag suggestions before saving.
+- `Tag Governance`: review tag health and merge redundant tags.
+
+## Interaction Model
+
+`Search Resources` is the primary high-frequency entry point. Compact resource rows show the resource title, icon, and a short identifying subtitle such as hostname, text excerpt, filename, or schema kind. Tags are intentionally kept out of compact rows; they appear in the right-side detail metadata, tag grouping context, or dedicated tag management screens.
+
+Resource detail panes use a shared metadata order across search, tag browsing, project resources, and auto-tag review:
+
+- Projects
+- Tags
+- AI Suggested Tags, when reviewing auto-tag output
+- URL or path
+- Type and other persisted properties
+
+`Browse Tags` acts as the Tag Center. It keeps tag-grouped browsing in one place and exposes `Auto-Tag Resources` and `Tag Governance` so tag creation, review, and cleanup are discoverable from the same command.
 
 ## Preferences
 
@@ -59,7 +75,14 @@ Tag filters use normalized substring matching and Chinese first-letter matching.
 
 ## Tags
 
-The add/edit flow uses one tag picker screen:
+The add/edit flow keeps core resource fields first:
+
+- Resource name.
+- Resource content.
+- Resource type.
+- Project role, when creating a resource from a project context.
+
+Tags are optional organization metadata:
 
 - Search existing tags.
 - Select existing tags from the picker.
@@ -71,7 +94,7 @@ The add/edit flow uses one tag picker screen:
 
 Project-related aggregation uses first-class project collections, not tags renamed as groups. A project can gather a PRD, technical design, test account reference, environment URL, issue, pull request, and notes while still letting each resource keep its own tags.
 
-Use `Search Projects` to create, find, open, edit, and archive projects. Inside a project, resources are grouped by role, and the normal resource default actions still work. From the project action item, add an existing resource or create a new resource directly into a selected role. From any resource action panel, use `Add to Project`; from a project resource view, use `Remove from Project` to remove only that membership. The canonical resource entry stays in its normal type root.
+Use `Search Projects` to create, find, open, edit, and archive projects. Project rows include a compact resource count and available owner/status context. Inside a project, resources are grouped by role, and the normal resource default actions still work. From the project action item, add an existing resource or create a new resource directly into a selected role. From any resource action panel, use `Add to Project`; from a project resource view, use `Remove from Project` to remove only that membership. The canonical resource entry stays in its normal type root.
 
 Projects are stored under a dedicated Org root:
 

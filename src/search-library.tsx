@@ -1,14 +1,14 @@
-import { List } from "@raycast/api";
+import { Action, ActionPanel, Icon, List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo, useState } from "react";
 import { EntryActions } from "./actions";
-import { iconForType } from "./list-helpers";
-import { renderEntryMarkdown } from "./preview";
+import { ResourceFormFlow } from "./add-entry";
+import { buildCompactResourceSubtitle, iconForType } from "./list-helpers";
+import { ResourceDetail } from "./resource-detail";
 import { filterEntriesBySearch } from "./resource";
 import { buildRuntimeRegistry } from "./runtime";
 import { loadProjectData } from "./projects/storage";
 import { loadEntries, loadRuntimeRegistry } from "./storage";
-import { LibraryEntry } from "./types";
 
 const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
   version: 1,
@@ -55,16 +55,11 @@ export default function SearchLibraryCommand() {
           key={entry.id}
           title={entry.title}
           icon={iconForType(entry.type)}
-          subtitle={buildSearchSubtitle(entry)}
+          subtitle={buildCompactResourceSubtitle(entry)}
           detail={
-            <List.Item.Detail
-              markdown={renderEntryMarkdown(entry)}
-              metadata={
-                <Metadata
-                  entry={entry}
-                  projects={entryProjects.get(entry.id) ?? []}
-                />
-              }
+            <ResourceDetail
+              entry={entry}
+              projects={entryProjects.get(entry.id) ?? []}
             />
           }
           actions={
@@ -77,108 +72,53 @@ export default function SearchLibraryCommand() {
           }
         />
       ))}
+      {entries.length === 0 ? (
+        <SearchEmptyView
+          hasResources={data.length > 0}
+          searchText={searchText}
+          onSaved={revalidate}
+        />
+      ) : null}
     </List>
   );
 }
 
-function buildSearchSubtitle(entry: LibraryEntry): string | undefined {
-  switch (entry.type) {
-    case "link": {
-      const url = entry.properties.URL || "";
-      try {
-        return new URL(url).hostname;
-      } catch {
-        return url ? truncate(url, 48) : undefined;
-      }
-    }
-    case "text": {
-      const body = entry.body.replace(/\s+/g, " ").trim();
-      return body ? truncate(body, 64) : undefined;
-    }
-    case "image": {
-      const src = entry.properties.PATH || entry.properties.URL || "";
-      return src.split("/").pop() || undefined;
-    }
-    case "schema":
-      return entry.properties.SCHEMA_KIND || undefined;
-    default: {
-      const body = entry.body.replace(/\s+/g, " ").trim();
-      return body ? truncate(body, 64) : undefined;
-    }
-  }
-}
-
-function truncate(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max)}...`;
-}
-
-// ── Metadata ─────────────────────────────────────────────────────
-
-function Metadata(props: { entry: LibraryEntry; projects: string[] }) {
-  const { entry, projects } = props;
-
-  const url = entry.properties.URL;
-  const path = entry.properties.PATH;
-  const schemaKind = entry.properties.SCHEMA_KIND;
-
-  const otherProperties = Object.entries(entry.properties).filter(
-    ([key]) =>
-      key !== "FORMAT" &&
-      key !== "DESCRIPTION" &&
-      key !== "URL" &&
-      key !== "PATH" &&
-      key !== "SCHEMA_KIND",
-  );
-
+function SearchEmptyView(props: {
+  hasResources: boolean;
+  searchText: string;
+  onSaved: () => void;
+}) {
+  const { hasResources, searchText, onSaved } = props;
   return (
-    <List.Item.Detail.Metadata>
-      {projects.length > 0 ? (
-        <List.Item.Detail.Metadata.TagList title="Projects">
-          {projects.map((name) => (
-            <List.Item.Detail.Metadata.TagList.Item
-              key={name}
-              text={name}
-              color="blue"
+    <List.EmptyView
+      title={hasResources ? "No matching resources" : "No resources yet"}
+      description={
+        hasResources
+          ? "Try a different keyword or #tag filter"
+          : "Add your first link, note, schema, or file reference"
+      }
+      icon={hasResources ? Icon.MagnifyingGlass : Icon.PlusCircle}
+      actions={
+        <ActionPanel>
+          <Action.Push
+            title="Add Resource"
+            icon={Icon.Plus}
+            target={
+              <ResourceFormFlow
+                onSaved={async () => {
+                  onSaved();
+                }}
+              />
+            }
+          />
+          {searchText.trim() ? (
+            <Action.CopyToClipboard
+              title="Copy Search Text"
+              content={searchText.trim()}
             />
-          ))}
-        </List.Item.Detail.Metadata.TagList>
-      ) : null}
-
-      {entry.tags.length > 0 ? (
-        <List.Item.Detail.Metadata.TagList title="Tags">
-          {entry.tags.map((tag) => (
-            <List.Item.Detail.Metadata.TagList.Item
-              key={tag}
-              text={tag}
-            />
-          ))}
-        </List.Item.Detail.Metadata.TagList>
-      ) : null}
-
-      <List.Item.Detail.Metadata.Label title="Type" text={entry.type} />
-
-      {url && (
-        <List.Item.Detail.Metadata.Link
-          title="URL"
-          text={url}
-          target={url}
-        />
-      )}
-
-      {path && (
-        <List.Item.Detail.Metadata.Label title="Path" text={path} />
-      )}
-
-      {schemaKind && (
-        <List.Item.Detail.Metadata.Label
-          title="Schema Kind"
-          text={schemaKind}
-        />
-      )}
-
-      {otherProperties.map(([key, value]) => (
-        <List.Item.Detail.Metadata.Label key={key} title={key} text={value} />
-      ))}
-    </List.Item.Detail.Metadata>
+          ) : null}
+        </ActionPanel>
+      }
+    />
   );
 }

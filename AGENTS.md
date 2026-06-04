@@ -134,6 +134,7 @@ Step 1 collects:
 - Resource name.
 - Resource content.
 - Resource type via a single-select `Form.Dropdown` built from the runtime registry, not a hard-coded closed type list.
+- Project role when the flow is launched from a project context.
 
 Organization fields come after the core resource fields:
 
@@ -152,7 +153,9 @@ Project collection flow:
 - `src/search-projects.tsx` renders the `Search Projects` command, project detail resource sections, project creation/editing, archive, add-existing-resource, and add-new-resource-into-role flows.
 - `EntryActions` exposes `Add to Project` as a secondary resource action and `Remove from Project` only when called from a project view context.
 
-`src/search-library.tsx` uses `List` with `isShowingDetail` to show a right-side preview. The left-side search result title area is space-constrained and should not show tags or resource type text; tags stay available in the right-side detail metadata. Preview markdown comes from `src/preview-markdown.ts` via `src/preview.tsx`, which truncates long bodies and escapes embedded triple backticks before rendering code fences.
+`src/search-library.tsx` uses `List` with `isShowingDetail` to show a right-side preview. Compact left-side resource rows are space-constrained and should not show tags as row accessories; tags belong in right-side detail metadata, tag-specific grouping context, or another roomy surface. The Search Resources list view should also avoid resource type text in the row. Shared row subtitles come from `buildCompactResourceSubtitle` in `src/list-helpers.ts`, and shared detail metadata comes from `src/resource-detail.tsx`. Preview markdown comes from `src/preview-markdown.ts` via `src/preview.tsx`, which truncates long bodies and escapes embedded triple backticks before rendering code fences.
+
+`src/browse-tags.tsx` is the Tag Center entry point. Keep tag browsing, `Auto-Tag Resources`, and `Tag Governance` discoverable from there rather than scattering tag-management entry points through unrelated resource actions.
 
 `src/actions.tsx` renders the primary resource actions from the resolved runtime action list for each entry.
 
@@ -184,7 +187,7 @@ The generator lives at `scripts/generate-icons.mjs` and uses `sharp` to render f
 Run these before claiming a change is complete:
 
 ```bash
-./node_modules/.bin/tsc tests/resource.test.ts tests/parser-runtime.test.ts tests/config.test.ts tests/runtime.test.ts tests/action-runner.test.ts tests/serializer-runtime.test.ts tests/launch-context.test.ts tests/search-library.test.ts tests/project-design-cleanup.test.ts tests/projects.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && NODE_PATH=/Users/nspzoow/Documents/raycast-org-bookmarks/node_modules node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js /tmp/raycast-org-bookmarks-tests/tests/parser-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/config.test.js /tmp/raycast-org-bookmarks-tests/tests/runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/action-runner.test.js /tmp/raycast-org-bookmarks-tests/tests/serializer-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/launch-context.test.js /tmp/raycast-org-bookmarks-tests/tests/search-library.test.js /tmp/raycast-org-bookmarks-tests/tests/project-design-cleanup.test.js /tmp/raycast-org-bookmarks-tests/tests/projects.test.js
+./node_modules/.bin/tsc tests/resource.test.ts tests/parser-runtime.test.ts tests/config.test.ts tests/runtime.test.ts tests/action-runner.test.ts tests/serializer-runtime.test.ts tests/launch-context.test.ts tests/search-library.test.ts tests/ui-flow.test.ts tests/project-design-cleanup.test.ts tests/projects.test.ts --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck --types node --outDir /tmp/raycast-org-bookmarks-tests && NODE_PATH=/Users/nspzoow/Documents/raycast-org-bookmarks/node_modules node --test /tmp/raycast-org-bookmarks-tests/tests/resource.test.js /tmp/raycast-org-bookmarks-tests/tests/parser-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/config.test.js /tmp/raycast-org-bookmarks-tests/tests/runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/action-runner.test.js /tmp/raycast-org-bookmarks-tests/tests/serializer-runtime.test.js /tmp/raycast-org-bookmarks-tests/tests/launch-context.test.js /tmp/raycast-org-bookmarks-tests/tests/search-library.test.js /tmp/raycast-org-bookmarks-tests/tests/ui-flow.test.js /tmp/raycast-org-bookmarks-tests/tests/project-design-cleanup.test.js /tmp/raycast-org-bookmarks-tests/tests/projects.test.js
 npm run build
 npm run generate-icons
 ./node_modules/.bin/ray build

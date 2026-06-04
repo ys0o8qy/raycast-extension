@@ -13,11 +13,11 @@ import { useCachedPromise } from "@raycast/utils";
 import { useState } from "react";
 import { suggestTagsBatch } from "./ai-tag-suggest";
 import { log } from "./logger";
-import { renderEntryMarkdown } from "./preview";
 import { getAllTags, normalizeTag } from "./resource";
+import { ResourceDetail } from "./resource-detail";
 import { loadEntries, updateEntry } from "./storage";
 import { LibraryEntry, NewEntryInput } from "./types";
-import { iconForType, buildTagAccessories } from "./list-helpers";
+import { buildCompactResourceSubtitle, iconForType } from "./list-helpers";
 
 export default function AutoTagResourcesCommand() {
   const { data = [], isLoading, revalidate } =
@@ -63,6 +63,19 @@ function AutoTagFlow(props: {
     setBatch((prev) => {
       if (prev.some((e) => e.id === entry.id)) return prev;
       return [...prev, entry];
+    });
+  }
+
+  function addEntriesToBatch(entriesToAdd: LibraryEntry[]) {
+    setBatch((prev) => {
+      const ids = new Set(prev.map((entry) => entry.id));
+      const next = [...prev];
+      for (const entry of entriesToAdd) {
+        if (ids.has(entry.id)) continue;
+        ids.add(entry.id);
+        next.push(entry);
+      }
+      return next;
     });
   }
 
@@ -172,6 +185,13 @@ function AutoTagFlow(props: {
   // ---- Phase: select ----
   if (phase === "select") {
     const batchIds = new Set(batch.map((e) => e.id));
+    const availableEntries = entries.filter((entry) => !batchIds.has(entry.id));
+    const untaggedEntries = availableEntries.filter(
+      (entry) => entry.tags.length === 0,
+    );
+    const lightlyTaggedEntries = availableEntries.filter(
+      (entry) => entry.tags.length > 0 && entry.tags.length <= 2,
+    );
 
     return (
       <List
@@ -186,6 +206,16 @@ function AutoTagFlow(props: {
               icon={Icon.Stars}
               shortcut={{ modifiers: ["cmd"], key: "return" }}
               onAction={startProcessing}
+            />
+            <Action
+              title="Add All Untagged"
+              icon={Icon.PlusCircle}
+              onAction={() => addEntriesToBatch(untaggedEntries)}
+            />
+            <Action
+              title="Add Lightly Tagged"
+              icon={Icon.Tag}
+              onAction={() => addEntriesToBatch(lightlyTaggedEntries)}
             />
             <Action
               title="Clear Batch"
@@ -204,8 +234,8 @@ function AutoTagFlow(props: {
               <List.Item
                 key={`batch-${entry.id}`}
                 title={entry.title}
+                subtitle={buildCompactResourceSubtitle(entry)}
                 icon={Icon.CheckCircle}
-                accessories={buildTagAccessories(entry.tags)}
                 actions={
                   <ActionPanel>
                     <Action
@@ -219,6 +249,11 @@ function AutoTagFlow(props: {
                       shortcut={{ modifiers: ["cmd"], key: "return" }}
                       onAction={startProcessing}
                     />
+                    <Action
+                      title="Add All Untagged"
+                      icon={Icon.PlusCircle}
+                      onAction={() => addEntriesToBatch(untaggedEntries)}
+                    />
                   </ActionPanel>
                 }
               />
@@ -226,25 +261,33 @@ function AutoTagFlow(props: {
           </List.Section>
         ) : null}
 
-        {entries
-          .filter((e) => !batchIds.has(e.id))
-          .map((entry) => (
-            <List.Item
-              key={entry.id}
-              title={entry.title}
-              icon={iconForType(entry.type)}
-              accessories={buildTagAccessories(entry.tags)}
-              actions={
-                <ActionPanel>
-                  <Action
-                    title="Add to Batch"
-                    icon={Icon.PlusCircle}
-                    onAction={() => addToBatch(entry)}
-                  />
-                </ActionPanel>
-              }
-            />
-          ))}
+        {availableEntries.map((entry) => (
+          <List.Item
+            key={entry.id}
+            title={entry.title}
+            subtitle={buildCompactResourceSubtitle(entry)}
+            icon={iconForType(entry.type)}
+            actions={
+              <ActionPanel>
+                <Action
+                  title="Add to Batch"
+                  icon={Icon.PlusCircle}
+                  onAction={() => addToBatch(entry)}
+                />
+                <Action
+                  title="Add All Untagged"
+                  icon={Icon.PlusCircle}
+                  onAction={() => addEntriesToBatch(untaggedEntries)}
+                />
+                <Action
+                  title="Add Lightly Tagged"
+                  icon={Icon.Tag}
+                  onAction={() => addEntriesToBatch(lightlyTaggedEntries)}
+                />
+              </ActionPanel>
+            }
+          />
+        ))}
       </List>
     );
   }
@@ -289,46 +332,7 @@ function AutoTagFlow(props: {
               title={entry.title}
               subtitle={`${tags.length} new tags`}
               icon={iconForType(entry.type)}
-              detail={
-                <List.Item.Detail
-                  markdown={renderEntryMarkdown(entry)}
-                  metadata={
-                    <List.Item.Detail.Metadata>
-                      {entry.tags.length > 0 ? (
-                        <List.Item.Detail.Metadata.TagList title="Existing Tags">
-                          {entry.tags.map((t) => (
-                            <List.Item.Detail.Metadata.TagList.Item
-                              key={t}
-                              text={t}
-                            />
-                          ))}
-                        </List.Item.Detail.Metadata.TagList>
-                      ) : null}
-                      {tags.length > 0 ? (
-                        <List.Item.Detail.Metadata.TagList title="AI Suggested Tags">
-                          {tags.map((t) => (
-                            <List.Item.Detail.Metadata.TagList.Item
-                              key={t}
-                              text={t}
-                              color="yellow"
-                            />
-                          ))}
-                        </List.Item.Detail.Metadata.TagList>
-                      ) : (
-                        <List.Item.Detail.Metadata.Label
-                          title="AI Suggested Tags"
-                          text="(none)"
-                        />
-                      )}
-                      <List.Item.Detail.Metadata.Separator />
-                      <List.Item.Detail.Metadata.Label
-                        title="Type"
-                        text={entry.type}
-                      />
-                    </List.Item.Detail.Metadata>
-                  }
-                />
-              }
+              detail={<ResourceDetail entry={entry} suggestedTags={tags} />}
               actions={
                 <ActionPanel>
                   {tags.map((tag) => (
