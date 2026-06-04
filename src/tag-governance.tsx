@@ -79,6 +79,17 @@ function TagGovernanceFlow(props: {
   const [approvedMerges, setApprovedMerges] = useState<TagMergeSuggestion[]>([]);
   const [isDetecting, setIsDetecting] = useState(false);
 
+  /** Tag → number of entries that have that tag. */
+  const tagCountMap = useMemo<Map<string, number>>(() => {
+    const map = new Map<string, number>();
+    for (const entry of entries) {
+      for (const tag of entry.tags) {
+        map.set(tag, (map.get(tag) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [entries]);
+
   const orphans = stats.filter((s) => s.isOrphan);
   const broad = stats.filter((s) => s.isBroad);
 
@@ -333,6 +344,55 @@ function TagGovernanceFlow(props: {
         ),
     );
 
+    /** Compute affected entries for a given merge suggestion. */
+    function getAffectedEntries(fromTag: string): LibraryEntry[] {
+      return entries.filter((e) => e.tags.includes(fromTag));
+    }
+
+    /** Count of unique entries affected by all approved merges. */
+    const totalAffectedApproved = (() => {
+      const mergedTagSet = new Set(approvedMerges.map((m) => m.from));
+      return entries.filter((e) => e.tags.some((t) => mergedTagSet.has(t))).length;
+    })();
+
+    /** Build a detail view for a merge suggestion. */
+    function renderMergeDetail(m: TagMergeSuggestion) {
+      const affected = getAffectedEntries(m.from);
+      return (
+        <List.Item.Detail
+          metadata={
+            <List.Item.Detail.Metadata>
+              <List.Item.Detail.Metadata.Label
+                title="From"
+                text={`#${m.from}`}
+              />
+              <List.Item.Detail.Metadata.Label
+                title="To"
+                text={`#${m.to}`}
+              />
+              <List.Item.Detail.Metadata.Separator />
+              <List.Item.Detail.Metadata.Label
+                title="Reason"
+                text={m.reason}
+              />
+              <List.Item.Detail.Metadata.Separator />
+              <List.Item.Detail.Metadata.Label
+                title="Affected Resources"
+                text={`${affected.length} resource${affected.length === 1 ? "" : "s"}`}
+              />
+              {affected.length > 0 && affected.map((e) => (
+                <List.Item.Detail.Metadata.Label
+                  key={e.id}
+                  title=""
+                  text={e.title}
+                />
+              ))}
+            </List.Item.Detail.Metadata>
+          }
+        />
+      );
+    }
+
     return (
       <List
         isLoading={isDetecting}
@@ -353,13 +413,16 @@ function TagGovernanceFlow(props: {
         {approvedMerges.length > 0 ? (
           <List.Section
             title="Approved Merges"
-            subtitle={`${approvedMerges.length} approved`}
+            subtitle={`${approvedMerges.length} merge${approvedMerges.length === 1 ? "" : "s"} · ${totalAffectedApproved} resource${totalAffectedApproved === 1 ? "" : "s"} affected`}
           >
             {approvedMerges.map((m) => (
               <List.Item
                 key={`${m.from}→${m.to}`}
                 title={`#${m.from} → #${m.to}`}
-                subtitle={m.reason}
+                subtitle={(() => {
+                  const n = tagCountMap.get(m.from) ?? 0;
+                  return `${m.reason} · ${n} resource${n === 1 ? "" : "s"}`;
+                })()}
                 icon={Icon.CheckCircle}
               />
             ))}
@@ -375,7 +438,10 @@ function TagGovernanceFlow(props: {
               <List.Item
                 key={`${m.from}→${m.to}`}
                 title={`#${m.from} → #${m.to}`}
-                subtitle={m.reason}
+                subtitle={(() => {
+                  const n = tagCountMap.get(m.from) ?? 0;
+                  return `${m.reason} · ${n} resource${n === 1 ? "" : "s"}`;
+                })()}
                 icon={Icon.Switch}
                 actions={
                   <ActionPanel>
