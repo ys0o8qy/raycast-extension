@@ -15,6 +15,23 @@ export interface ClipboardResource {
   file?: string;
 }
 
+export type SortOption = "updated" | "title" | "type" | "created";
+
+export function sortEntries(entries: LibraryEntry[], sort: SortOption): LibraryEntry[] {
+  const sorted = [...entries];
+  switch (sort) {
+    case "title":
+      return sorted.sort((a, b) => a.title.localeCompare(b.title));
+    case "type":
+      return sorted.sort((a, b) => a.type.localeCompare(b.type) || a.title.localeCompare(b.title));
+    case "created":
+      return sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    case "updated":
+    default:
+      return sorted.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+}
+
 export interface ParsedSearchQuery {
   tags: string[];
   keywords: string[];
@@ -146,7 +163,7 @@ export function filterEntriesBySearch(
   const parsed = parseSearchQuery(query);
 
   if (parsed.tags.length === 0 && parsed.keywords.length === 0) {
-    return entries;
+    return sortEntries(entries, "updated");
   }
 
   return entries
