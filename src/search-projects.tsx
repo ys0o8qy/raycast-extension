@@ -40,6 +40,8 @@ const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
 
 interface ProjectFormValues {
   title: string;
+  status: string;
+  owner: string;
 }
 
 export default function SearchProjectsCommand() {
@@ -505,6 +507,7 @@ function ProjectForm(props: { project?: Project; onSaved: () => void }) {
   const { pop } = useNavigation();
 
   async function handleSubmit(values: ProjectFormValues) {
+    const { title, status, owner } = values;
     if (!values.title.trim()) {
       await showToast({
         style: Toast.Style.Failure,
@@ -556,6 +559,22 @@ function ProjectForm(props: { project?: Project; onSaved: () => void }) {
         placeholder="Payment redesign"
         defaultValue={project?.title ?? ""}
       />
+      <Form.Dropdown
+        id="status"
+        title="Status"
+        defaultValue={project?.status ?? "active"}
+      >
+        <Form.Dropdown.Item value="active" title="Active" />
+        <Form.Dropdown.Item value="done" title="Done" />
+        <Form.Dropdown.Item value="on-hold" title="On Hold" />
+        <Form.Dropdown.Item value="archived" title="Archived" />
+      </Form.Dropdown>
+      <Form.TextField
+        id="owner"
+        title="Owner"
+        placeholder="Owner name (optional)"
+        defaultValue={project?.owner ?? ""}
+      />
     </Form>
   );
 }
@@ -567,5 +586,7 @@ function projectFormValuesToInput(
   return {
     id: projectId,
     title: values.title,
+    status: values.status,
+    owner: values.owner || undefined,
   };
 }
