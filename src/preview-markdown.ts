@@ -1,6 +1,17 @@
 import { LibraryEntry } from "./types";
+import * as fs from "fs";
+import * as path from "path";
 
 const PREVIEW_BODY_LIMIT = 2400;
+
+const MIME_MAP: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+};
 
 function codeFence(language: string, value: string): string {
   return `\n\n\`\`\`${language}\n${escapeCodeFence(value)}\n\`\`\``;
@@ -22,12 +33,24 @@ function compactTitle(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function localImageMarkdown(title: string, filePath: string): string[] {
+  try {
+    const ext = path.extname(filePath).toLowerCase().replace(".", "");
+    const mime = MIME_MAP[ext] || "image/png";
+    const data = fs.readFileSync(filePath);
+    const b64 = data.toString("base64");
+    return ["", `![${title}](data:${mime};base64,${b64})`, `*${path.basename(filePath)}*`];
+  } catch {
+    return ["", `![${title}](file://${filePath})`, `*${filePath}*`];
+  }
+}
+
 function imageMarkdown(entry: LibraryEntry): string[] {
   const localPath = entry.properties.PATH;
   const url = entry.properties.URL;
 
   if (localPath) {
-    return ["", `![${entry.title}](${localPath})`];
+    return localImageMarkdown(entry.title, localPath);
   }
 
   if (url) {
