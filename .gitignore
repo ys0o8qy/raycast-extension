@@ -2,3 +2,4 @@ node_modules
 .tmp-tests
 .tmp-entry-actions-debug
 .build-reports
+*.gist-sync.json

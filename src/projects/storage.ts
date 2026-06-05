@@ -10,6 +10,7 @@ import {
 } from "./serializer";
 import { extractProjectData } from "./parser";
 import { ProjectData, ProjectInput, ProjectMembershipInput } from "./types";
+import { markDirty } from "../sync/coordinator";
 
 export async function loadProjectData(): Promise<ProjectData> {
   try {
@@ -77,4 +78,5 @@ async function updateOrgContent(
   }
 
   await fs.writeFile(path, updater(content), "utf8");
+  markDirty();
 }

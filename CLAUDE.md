@@ -21,6 +21,7 @@ Tests are plain `.ts` files compiled on-the-fly with `tsc` then run via `node --
   tests/runtime.test.ts tests/action-runner.test.ts tests/serializer-runtime.test.ts \
   tests/launch-context.test.ts tests/search-library.test.ts tests/ui-flow.test.ts \
   tests/project-design-cleanup.test.ts tests/projects.test.ts \
+  tests/sync-metadata.test.ts tests/sync-gist-client.test.ts \
   --module commonjs --target ES2022 --jsx react-jsx --esModuleInterop --skipLibCheck \
   --types node --outDir /tmp/raycast-org-bookmarks-tests \
   && NODE_PATH=$(pwd)/node_modules node --test /tmp/raycast-org-bookmarks-tests/tests/*.test.js
@@ -82,3 +83,16 @@ Built-in types: `link`, `image`, `text`, `schema`, `generic` (fallback for unkno
 - Parser (`src/org/parser.ts`): line-based, builds a tree of `OrgNode` objects with headline levels, properties blocks, body text, and source line ranges. Entries are identified by `:TYPE:` property.
 - Serializer (`src/org/serializer.ts`): `appendEntryToOrg()` inserts entries under the correct root heading (resolved from the runtime semantic type), creating intermediate group headings as needed. `updateEntry()` removes the old block by line range then appends the new one. `removeEntryFromOrg()` deletes by line range.
 - Entries get a stable `:ID:` property — SHA1 hash of type+path+title+body+properties if no explicit ID, or `randomUUID()` for new entries.
+
+### GitHub Gist Sync
+
+`src/sync/` provides remote backup via GitHub Gist API. Architecture:
+
+- **`types.ts`** — `SyncMetadata`, error classes (`GistAuthError`, `GistNotFoundError`, `GistRateLimitError`, `GistNetworkError`)
+- **`metadata.ts`** — Read/write `gist-sync.json` (auto-derived from `orgFilePath`: `<dir>/<filename>.gist-sync.json`). Follows the DI pattern from `config.ts`.
+- **`gist-client.ts`** — GitHub Gist REST API (`createGist`, `updateGist`, `getGist`, `validateToken`). Injects `fetch` for testability.
+- **`sync-service.ts`** — High-level orchestration: `getSyncStatus()`, `pushToGist()`, `pullFromGist()`, `setupGist()`, `connectToGist()`, `disconnectGist()`.
+- **`coordinator.ts`** — `afterOrgFileWrite()` fire-and-forget hook with 3s debounce, called by `storage.ts` and `projects/storage.ts` after every write.
+- **`src/sync-gist.tsx`** — Raycast command for setup, push, pull, and status monitoring.
+
+**Sync model**: Push-primary (auto-push on save, debounced 3s), manual pull only. Local file is source of truth; Gist is backup snapshot. Only one new preference needed: `githubPersonalAccessToken` (password, optional).

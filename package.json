@@ -49,6 +49,13 @@
       "description": "Analyze tag health, detect synonyms, and merge redundant tags",
       "icon": "browse-tags.png",
       "mode": "view"
+    },
+    {
+      "name": "sync-gist",
+      "title": "Sync Gist",
+      "description": "Push/pull your resource library to/from a GitHub Gist",
+      "icon": "search-library.png",
+      "mode": "view"
     }
   ],
   "preferences": [
@@ -74,6 +81,13 @@
       "description": "AI model for suggesting tags. Use a preset key (OpenAI_GPT-5_nano, Anthropic_Claude_4.5_Haiku, …) or any custom model string supported by your BYOK provider (e.g. claude-sonnet-4-20250514). See AI.Model docs for all presets. Requires Raycast Pro or BYOK AI access.",
       "default": "OpenAI_GPT-5_nano",
       "placeholder": "OpenAI_GPT-5_nano or your-model-id"
+    },
+    {
+      "name": "githubPersonalAccessToken",
+      "type": "password",
+      "required": false,
+      "title": "GitHub Personal Access Token",
+      "description": "GitHub personal access token with 'gist' scope for syncing your resource library. Create one at https://github.com/settings/tokens. Leave empty to disable Gist sync."
     }
   ],
   "dependencies": {

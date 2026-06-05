@@ -8,6 +8,7 @@ import {
   buildRuntimeRegistry,
   resolveRuntimeStorageInfo,
 } from "./runtime";
+import { markDirty } from "./sync/coordinator";
 import { LibraryEntry, NewEntryInput } from "./types";
 
 interface Preferences {
@@ -61,6 +62,7 @@ export async function saveEntry(input: NewEntryInput): Promise<string> {
     resolveRuntimeStorageInfo(runtimeRegistry, entryInput.type),
   );
   await fs.writeFile(path, updated, "utf8");
+  markDirty();
   return entryInput.id;
 }
 
@@ -103,6 +105,7 @@ export async function updateEntry(
     resolveRuntimeStorageInfo(runtimeRegistry, input.type),
   );
   await fs.writeFile(path, updated, "utf8");
+  markDirty();
 }
 
 export async function deleteEntry(id: string): Promise<void> {
@@ -110,4 +113,5 @@ export async function deleteEntry(id: string): Promise<void> {
   const existingContent = await fs.readFile(path, "utf8");
   const updated = removeEntryFromOrg(existingContent, id);
   await fs.writeFile(path, updated, "utf8");
+  markDirty();
 }
