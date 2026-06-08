@@ -30,7 +30,12 @@ export async function loadEntries(): Promise<LibraryEntry[]> {
   const entries = extractLibraryEntries(parseOrg(content));
   // Sort newest-first by updatedAt timestamp
   return entries.sort(
-    (a, b) => b.updatedAt.localeCompare(a.updatedAt),
+    (a, b) => {
+      const aModified = a.updatedAt !== a.createdAt;
+      const bModified = b.updatedAt !== b.createdAt;
+      if (aModified !== bModified) return aModified ? -1 : 1;
+      return b.updatedAt.localeCompare(a.updatedAt);
+    },
   );
 }
 

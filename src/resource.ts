@@ -28,7 +28,12 @@ export function sortEntries(entries: LibraryEntry[], sort: SortOption): LibraryE
       return sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     case "updated":
     default:
-      return sorted.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      return sorted.sort((a, b) => {
+        const aModified = a.updatedAt !== a.createdAt;
+        const bModified = b.updatedAt !== b.createdAt;
+        if (aModified !== bModified) return aModified ? -1 : 1;
+        return b.updatedAt.localeCompare(a.updatedAt);
+      });
   }
 }
 
@@ -174,7 +179,12 @@ export function filterEntriesBySearch(
         parsed.keywords.every((keyword) => searchableText.includes(keyword))
       );
     })
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    .sort((a, b) => {
+        const aModified = a.updatedAt !== a.createdAt;
+        const bModified = b.updatedAt !== b.createdAt;
+        if (aModified !== bModified) return aModified ? -1 : 1;
+        return b.updatedAt.localeCompare(a.updatedAt);
+      });
 }
 
 export function getAllTags(entries: LibraryEntry[]): string[] {
