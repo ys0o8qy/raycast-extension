@@ -9,6 +9,7 @@ import { filterEntriesBySearch, sortEntries, SortOption } from "./resource";
 import { buildRuntimeRegistry } from "./runtime";
 import { loadProjectData } from "./projects/storage";
 import { loadEntries, loadRuntimeRegistry } from "./storage";
+import { loadUsageScores } from "./usage-tracker";
 
 const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
   version: 1,
@@ -22,11 +23,15 @@ export default function SearchLibraryCommand() {
     useCachedPromise(loadRuntimeRegistry);
   const { data: projectData = { projects: [], memberships: [] } } =
     useCachedPromise(loadProjectData);
+  const { data: usageScores = {} } = useCachedPromise(loadUsageScores);
   const [searchText, setSearchText] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("updated");
   const [showDetail, setShowDetail] = useState(true);
   const entries = filterEntriesBySearch(data, searchText);
-  const sortedEntries = sortEntries(entries, sortOption);
+  const sortedEntries =
+    sortOption === "usage"
+      ? [...entries].sort((a, b) => (usageScores[b.id] ?? 0) - (usageScores[a.id] ?? 0))
+      : sortEntries(entries, sortOption);
 
   // Build a map of entry ID → project titles for project context display
   const entryProjects = useMemo(() => {
@@ -55,6 +60,7 @@ export default function SearchLibraryCommand() {
       searchBarAccessory={
         <List.Dropdown tooltip="Sort by" value={sortOption} onChange={(v) => setSortOption(v as SortOption)}>
           <List.Dropdown.Item value="updated" title="Recently Updated" />
+          <List.Dropdown.Item value="usage" title="Most Used" />
           <List.Dropdown.Item value="title" title="Title A-Z" />
           <List.Dropdown.Item value="type" title="Type" />
           <List.Dropdown.Item value="created" title="Recently Created" />

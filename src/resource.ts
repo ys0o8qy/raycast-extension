@@ -15,7 +15,7 @@ export interface ClipboardResource {
   file?: string;
 }
 
-export type SortOption = "updated" | "title" | "type" | "created";
+export type SortOption = "updated" | "title" | "type" | "created" | "usage";
 
 export function sortEntries(entries: LibraryEntry[], sort: SortOption): LibraryEntry[] {
   const sorted = [...entries];
