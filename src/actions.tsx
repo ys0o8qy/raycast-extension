@@ -34,6 +34,7 @@ import {
   AddResourcesToProject,
   NewResourceWithRoleFlow,
 } from "./search-projects";
+import { recordOpen, recordCopy } from "./usage-tracker";
 
 const FALLBACK_RUNTIME_REGISTRY = buildRuntimeRegistry({
   version: 1,
@@ -72,6 +73,13 @@ export function EntryActions(props: {
           "show-detail": () => undefined,
         },
       });
+      if (entry && action.mode === "builtin") {
+        if (action.builtin === "open-in-browser" || action.builtin === "open-path") {
+          recordOpen(entry.id);
+        } else if (action.builtin === "copy-to-clipboard") {
+          recordCopy(entry.id);
+        }
+      }
     } catch (error) {
       await showToast({
         style: Toast.Style.Failure,
@@ -209,14 +217,14 @@ export function EntryActions(props: {
         </>
       ) : null}
       {localPath ? (
-        <Action.CopyToClipboard title="Copy Local Path" content={localPath} shortcut={{ modifiers: ["cmd", "shift"], key: "l" }} />
+        <Action.CopyToClipboard title="Copy Local Path" content={localPath} shortcut={{ modifiers: ["cmd", "shift"], key: "l" }} onCopy={() => entry && recordCopy(entry.id)} />
       ) : null}
-      {url ? <Action.CopyToClipboard title="Copy URL" content={url} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} /> : null}
+      {url ? <Action.CopyToClipboard title="Copy URL" content={url} shortcut={{ modifiers: ["cmd", "shift"], key: "c" }} onCopy={() => entry && recordCopy(entry.id)} /> : null}
       {entry ? (
-        <Action.CopyToClipboard title="Copy Title" content={entry.title} shortcut={{ modifiers: ["cmd", "shift"], key: "t" }} />
+        <Action.CopyToClipboard title="Copy Title" content={entry.title} shortcut={{ modifiers: ["cmd", "shift"], key: "t" }} onCopy={() => recordCopy(entry.id)} />
       ) : null}
       {entry?.body ? (
-        <Action.CopyToClipboard title="Copy Body" content={entry.body} shortcut={{ modifiers: ["cmd", "shift"], key: "b" }} />
+        <Action.CopyToClipboard title="Copy Body" content={entry.body} shortcut={{ modifiers: ["cmd", "shift"], key: "b" }} onCopy={() => recordCopy(entry.id)} />
       ) : null}
       {onReload ? (
         <Action
